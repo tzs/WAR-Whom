@@ -66,9 +66,41 @@ function tzs.OnSlash(args)
     tzs.countT4 = 0
     tzs.count40 = 0
     tzs.overflow = 0
-    tzs.classes = {}
+    tzs.classesT1 = {}
+    tzs.classesT2 = {}
+    tzs.classesT3 = {}
+    tzs.classesT4 = {}
+    tzs.classes40 = {}
     RegisterEventHandler( SystemData.Events.SOCIAL_SEARCH_UPDATED, "tzs.OnSearch" )
     tzs.Search()
+end
+
+function tzs.CountClass(counter, career)
+    local classindex = 0
+    local searchcareer = tostring(career)
+    local slen = string.len(searchcareer)
+    searchcareer = string.sub(searchcareer,1,slen-2)
+    for i = 1, 24 do
+        if ( searchcareer == tostring(tzs.careers[i]) ) then
+            classindex = i
+            break
+        end
+    end
+    if ( classindex == 0 ) then
+        EA_ChatWindow.Print(L"ERROR: class "..career..L" not found in career table")
+        return
+    end
+    if ( counter[classindex] == nul ) then
+        counter[classindex] = 0
+    end
+    counter[classindex] = counter[classindex] + 1
+end
+
+function tzs.ShowCount(counter, name, total)
+    for key, value in pairs( counter ) do
+        EA_ChatWindow.Print(towstring(value.." "..name.." ")..tzs.careers[key])
+    end
+    EA_ChatWindow.Print(towstring("tzs: "..name.." players found: "..total))
 end
 
 function tzs.OnSearch()
@@ -76,18 +108,25 @@ function tzs.OnSearch()
     if ( data ~= nul )
     then
         if ( #data < 30 ) then
-            tzs.count = tzs.count + #data
-            local level = tzs.queue[tzs.readpos+2]
-            if ( level <= 11 ) then
-                tzs.countT1 = tzs.countT1 + #data
-            elseif ( level <= 21 ) then
-                tzs.countT2 = tzs.countT2 + #data
-            elseif ( level <= 31 ) then
-                tzs.countT3 = tzs.countT3 + #data
-            else
-                tzs.countT4 = tzs.countT4 + #data
-                if ( level == 40 ) then
-                    tzs.count40 = tzs.count40 + #data
+            for key, value in ipairs( data ) do
+                tzs.count = tzs.count + 1
+                --EA_ChatWindow.Print(value.career..towstring(", rank "..value.rank.." in "..value.zoneID))
+                if ( value.rank <= 11 ) then
+                    tzs.countT1 = tzs.countT1 + 1
+                    tzs.CountClass( tzs.classesT1, value.career )
+                elseif ( value.rank <= 21 ) then
+                    tzs.countT2 = tzs.countT2 + 1
+                    tzs.CountClass( tzs.classesT2, value.career )
+                elseif ( value.rank <= 31 ) then
+                    tzs.countT3 = tzs.countT3 + 1
+                    tzs.CountClass( tzs.classesT3, value.career )
+                else
+                    tzs.countT4 = tzs.countT4 + 1
+                    tzs.CountClass( tzs.classesT4, value.career )
+                    if ( value.rank == 40 ) then
+                        tzs.count40 = tzs.count40 + 1
+                        tzs.CountClass( tzs.classes40, value.career )
+                    end
                 end
             end
         else
@@ -109,11 +148,12 @@ function tzs.OnSearch()
     if ( tzs.writepos > tzs.readpos ) then
         tzs.Search()
     else
-        EA_ChatWindow.Print(towstring("tzs: T1 players found: "..tzs.countT1))
-        EA_ChatWindow.Print(towstring("tzs: T2 players found: "..tzs.countT2))
-        EA_ChatWindow.Print(towstring("tzs: T3 players found: "..tzs.countT3))
-        EA_ChatWindow.Print(towstring("tzs: T4 players found: "..tzs.countT4))
-        EA_ChatWindow.Print(towstring("tzs: Level 40 players found: "..tzs.count40))
+        tzs.ShowCount( tzs.classesT1, "T1", tzs.countT1)
+        tzs.ShowCount( tzs.classesT2, "T2", tzs.countT2)
+        tzs.ShowCount( tzs.classesT3, "T3", tzs.countT3)
+        tzs.ShowCount( tzs.classesT4, "T4", tzs.countT4)
+        tzs.ShowCount( tzs.classes40, "level 40", tzs.count40)
+
         EA_ChatWindow.Print(towstring("tzs: total players found: "..tzs.count))
         EA_ChatWindow.Print(towstring("tzs: hit max: "..tzs.overflow))
     end
