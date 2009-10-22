@@ -1,160 +1,212 @@
-tzs = {}
+whom = {}
 
-function tzs.Initialize()
-    EA_ChatWindow.Print(towstring("Hello! tzs add-on is available"))
-    LibSlash.RegisterWSlashCmd("tzs", function(args) tzs.OnSlash(args) end)
-    tzs.queue = {}
-    tzs.writepos = 0
-    tzs.readpos = 1
-    tzs.careers = { 
-        L"Ironbreaker",
-        L"Rune Priest",
-        L"Engineer",
-        L"Slayer",
-        L"Bright Wizard",
-        L"Warrior Priest",
-        L"Witch Hunter",
-        L"Knight of the Blazing Sun",
-        L"Archmage",
-        L"Swordmaster",
-        L"Shadow Warrior",
-        L"White Lion",
-    
-        L"Black Orc",
-        L"Shaman",
-        L"Squig Herder",
-        L"Choppa",
-        L"Chosen",
-        L"Magus",
-        L"Zealot",
-        L"Marauder",
-        L"Witch Elf",
-        L"Blackguard",
-        L"Sorcerer",
-        L"Disciple of Khaine",
+-- This is ugly code. I wanted this add-on, so just kind of started hacking, without
+-- actually learning Lua. I am quite hazy on things like how to do data structures
+-- in Lua. No need to suggest the dozens of obvious ways this code be made
+-- non-braindead. I already know them--just haven't learned how to do them
+-- in Lua yet! If only Mythic had picked Perl for their interface language...
+
+function whom.Initialize()
+    EA_ChatWindow.Print(towstring("Hello! whom add-on is available"))
+    LibSlash.RegisterWSlashCmd("whom", function(args) whom.OnSlash(args) end)
+    whom.queue = {}
+    whom.writepos = 0
+    whom.readpos = 1
+    whom.careers = {
+        -- Tank
+        L"Ironbreaker", L"Swordmaster", L"Knight of the Blazing Sun",
+        -- MDPS
+        L"Slayer", L"Witch Hunter", L"White Lion",
+        -- RDPS
+        L"Engineer", L"Bright Wizard", L"Shadow Warrior",
+        -- Healer
+        L"Warrior Priest", L"Archmage", L"Rune Priest",
+        -- Tank
+        L"Black Orc", L"Chosen", L"Blackguard",
+        -- MDPS
+        L"Witch Elf", L"Choppa", L"Marauder",
+        -- RDPS
+        L"Squig Herder", L"Magus", L"Sorcerer",
+        -- Healer
+        L"Shaman", L"Zealot", L"Disciple of Khaine",
+        -- Female Sorcerer (player is, of course, actually malewhom)
+        L"Sorceress"
     }
 end
 
-function tzs.Search()
+function whom.Search()
     local zone = {}
-    zone[1] = tzs.queue[tzs.readpos+1]
+    zone[1] = whom.queue[whom.readpos+1]
     SendPlayerSearchRequest( L"",
                              L"",
-                             tzs.queue[tzs.readpos],
+                             whom.queue[whom.readpos],
                              zone,
-                             tzs.queue[tzs.readpos+2],
-                             tzs.queue[tzs.readpos+2],
+                             whom.queue[whom.readpos+2],
+                             whom.queue[whom.readpos+2],
                              false )
 end
 
-function tzs.AddItem(career, zone, level)
-    tzs.queue[tzs.writepos+1] = career
-    tzs.queue[tzs.writepos+2] = zone
-    tzs.queue[tzs.writepos+3] = level
-    tzs.writepos = tzs.writepos + 3
+function whom.AddItem(career, zone, level)
+    whom.queue[whom.writepos+1] = career
+    whom.queue[whom.writepos+2] = zone
+    whom.queue[whom.writepos+3] = level
+    whom.writepos = whom.writepos + 3
 end
 
-function tzs.OnSlash(args)
-    EA_ChatWindow.Print(towstring("You issued the /tzs command! [")..args..towstring("]"))
+function whom.OnSlash(args)
+    EA_ChatWindow.Print(L"Checking for players...this will take a while")
+    whom.details = false
+    if ( args == L"-v" ) then whom.details = true end
+    whom.running = true
+    whom.count = 0
+    whom.countT1 = 0
+    whom.countT2 = 0
+    whom.countT3 = 0
+    whom.countT4 = 0
+    whom.count40 = 0
+    whom.overflow = 0
+    whom.classesT1 = {}
+    whom.classesT2 = {}
+    whom.classesT3 = {}
+    whom.classesT4 = {}
+    whom.classes40 = {}
+    whom.tanks = {0,0,0,0,0}
+    whom.rdps = {0,0,0,0,0}
+    whom.mdps = {0,0,0,0,0}
+    whom.healers = {0,0,0,0,0}
+    whom.all = {0,0,0,0,0}
     for level = 1, 40 do
-        tzs.AddItem( L"", -1, level)
+        whom.AddItem( L"", -1, level)
     end
-    tzs.count = 0
-    tzs.countT1 = 0
-    tzs.countT2 = 0
-    tzs.countT3 = 0
-    tzs.countT4 = 0
-    tzs.count40 = 0
-    tzs.overflow = 0
-    tzs.classesT1 = {}
-    tzs.classesT2 = {}
-    tzs.classesT3 = {}
-    tzs.classesT4 = {}
-    tzs.classes40 = {}
-    RegisterEventHandler( SystemData.Events.SOCIAL_SEARCH_UPDATED, "tzs.OnSearch" )
-    tzs.Search()
+    RegisterEventHandler( SystemData.Events.SOCIAL_SEARCH_UPDATED, "whom.OnSearch" )
+    whom.Search()
 end
 
-function tzs.CountClass(counter, career)
+function whom.CountClass(counter, career, rank)
     local classindex = 0
     local searchcareer = tostring(career)
     local slen = string.len(searchcareer)
     searchcareer = string.sub(searchcareer,1,slen-2)
-    for i = 1, 24 do
-        if ( searchcareer == tostring(tzs.careers[i]) ) then
+    for i = 1, 25 do
+        if ( searchcareer == tostring(whom.careers[i]) ) then
             classindex = i
             break
         end
     end
+    if ( classindex == 25 ) then classindex = 21 end
     if ( classindex == 0 ) then
-        EA_ChatWindow.Print(L"ERROR: class "..career..L" not found in career table")
+        EA_ChatWindow.Print(L"whom: ERROR: class "..career..L" not found in career table")
         return
     end
     if ( counter[classindex] == nul ) then
         counter[classindex] = 0
     end
     counter[classindex] = counter[classindex] + 1
-end
-
-function tzs.ShowCount(counter, name, total)
-    for key, value in pairs( counter ) do
-        EA_ChatWindow.Print(towstring(value.." "..name.." ")..tzs.careers[key])
+    if ( rank == 40 ) then
+        whom.count40 = whom.count40 + 1
+        if ( whom.classes40[classindex] == nul ) then
+            whom.classes40[classindex] = 0
+        end
+        whom.classes40[classindex] = whom.classes40[classindex] + 1
     end
-    EA_ChatWindow.Print(towstring("tzs: "..name.." players found: "..total))
+    local tier = 1
+    if ( rank >= 12 ) then tier = 2 end
+    if ( rank >= 22 ) then tier = 3 end
+    if ( rank >= 32 ) then tier = 4 end
+    if ( classindex > 12 ) then classindex = classindex - 12 end
+    whom.all[tier] = whom.all[tier] + 1
+    if ( rank == 40 ) then whom.all[5] = whom.all[5] + 1 end
+    if ( classindex <= 3 ) then
+        whom.tanks[tier] = whom.tanks[tier] + 1
+        if ( rank == 40 ) then whom.tanks[5] = whom.tanks[5] + 1 end
+    elseif ( classindex <= 6 ) then
+        whom.mdps[tier] = whom.mdps[tier] + 1
+        if ( rank == 40 ) then whom.mdps[5] = whom.mdps[5] + 1 end
+    elseif ( classindex <= 9 ) then
+        whom.rdps[tier] = whom.rdps[tier] + 1
+        if ( rank == 40 ) then whom.rdps[5] = whom.rdps[5] + 1 end
+    else
+        whom.healers[tier] = whom.healers[tier] + 1
+        if ( rank == 40 ) then whom.healers[5] = whom.healers[5] + 1 end
+    end
 end
 
-function tzs.OnSearch()
+function whom.ShowCount(counter, name, total)
+    EA_ChatWindow.Print(towstring("**** " .. name .. " players: " .. total .. " ****"))
+    for key, value in pairs( counter ) do
+        EA_ChatWindow.Print(towstring("   " .. value .. " ")..whom.careers[key])
+    end
+end
+
+function whom.Tally(data)
+    for key, value in ipairs( data ) do
+        whom.count = whom.count + 1
+        --EA_ChatWindow.Print(value.career..towstring(", rank "..value.rank.." in "..value.zoneID))
+        if ( value.rank <= 11 ) then
+            whom.countT1 = whom.countT1 + 1
+            whom.CountClass( whom.classesT1, value.career, value.rank )
+        elseif ( value.rank <= 21 ) then
+            whom.countT2 = whom.countT2 + 1
+            whom.CountClass( whom.classesT2, value.career, value.rank )
+        elseif ( value.rank <= 31 ) then
+            whom.countT3 = whom.countT3 + 1
+            whom.CountClass( whom.classesT3, value.career, value.rank )
+        else
+            whom.countT4 = whom.countT4 + 1
+            whom.CountClass( whom.classesT4, value.career, value.rank )
+        end
+    end
+end
+
+function whom.OnSearch()
+    if ( whom.running == false ) then return end
     local data = GetSearchList()
     if ( data ~= nul )
     then
         if ( #data < 30 ) then
-            for key, value in ipairs( data ) do
-                tzs.count = tzs.count + 1
-                --EA_ChatWindow.Print(value.career..towstring(", rank "..value.rank.." in "..value.zoneID))
-                if ( value.rank <= 11 ) then
-                    tzs.countT1 = tzs.countT1 + 1
-                    tzs.CountClass( tzs.classesT1, value.career )
-                elseif ( value.rank <= 21 ) then
-                    tzs.countT2 = tzs.countT2 + 1
-                    tzs.CountClass( tzs.classesT2, value.career )
-                elseif ( value.rank <= 31 ) then
-                    tzs.countT3 = tzs.countT3 + 1
-                    tzs.CountClass( tzs.classesT3, value.career )
-                else
-                    tzs.countT4 = tzs.countT4 + 1
-                    tzs.CountClass( tzs.classesT4, value.career )
-                    if ( value.rank == 40 ) then
-                        tzs.count40 = tzs.count40 + 1
-                        tzs.CountClass( tzs.classes40, value.career )
-                    end
-                end
-            end
+            whom.Tally(data)
         else
-            if ( tzs.queue[tzs.readpos] == L"" )
+            if ( whom.queue[whom.readpos] == L"" )
             then
                 local offset = 0
                 if ( GameData.Player.realm == GameData.Realm.DESTRUCTION ) then
                     offset = 12
                 end
                 for i = 1, 12 do
-                    tzs.AddItem( tzs.careers[i+offset], tzs.queue[tzs.readpos+1], tzs.queue[tzs.readpos+2] )
+                    whom.AddItem( whom.careers[i+offset], whom.queue[whom.readpos+1], whom.queue[whom.readpos+2] )
                 end
             else
-                tzs.overflow = tzs.overflow + 1
+                whom.overflow = whom.overflow + 1
+                whom.Tally(data)
             end
         end
     end
-    tzs.readpos = tzs.readpos + 3
-    if ( tzs.writepos > tzs.readpos ) then
-        tzs.Search()
+    whom.readpos = whom.readpos + 3
+    if ( whom.writepos > whom.readpos ) then
+        whom.Search()
     else
-        tzs.ShowCount( tzs.classesT1, "T1", tzs.countT1)
-        tzs.ShowCount( tzs.classesT2, "T2", tzs.countT2)
-        tzs.ShowCount( tzs.classesT3, "T3", tzs.countT3)
-        tzs.ShowCount( tzs.classesT4, "T4", tzs.countT4)
-        tzs.ShowCount( tzs.classes40, "level 40", tzs.count40)
+        whom.running = false
+        if ( whom.details == true ) then
+            whom.ShowCount( whom.classesT1, "Tier 1", whom.countT1)
+            whom.ShowCount( whom.classesT2, "Tier 2", whom.countT2)
+            whom.ShowCount( whom.classesT3, "Tier 3", whom.countT3)
+            whom.ShowCount( whom.classesT4, "Tier 4", whom.countT4)
+            whom.ShowCount( whom.classes40, "R40", whom.count40)
+        end
 
-        EA_ChatWindow.Print(towstring("tzs: total players found: "..tzs.count))
-        EA_ChatWindow.Print(towstring("tzs: hit max: "..tzs.overflow))
+        EA_ChatWindow.Print(towstring("**** Total players found: "..whom.count.. " ****"))
+        if ( whom.overflow > 0 ) then
+            EA_ChatWindow.Print(L"whom: WARNING some level/class combinations were skipped due to overflow! Count is not accurate!")
+        end
+        for i = 1, 5 do
+            local tname = "Tier "..i
+            if ( i == 5) then tname = "R40" end
+            EA_ChatWindow.Print(towstring(  tname .. ", "
+                                            .. whom.all[i] .. " players: "
+                                            .. whom.tanks[i] .. " tank, "
+                                            .. whom.mdps[i] .. " melee, "
+                                            .. whom.rdps[i] .. " ranged, "
+                                            .. whom.healers[i] .. " healer"))
+        end
     end
 end
