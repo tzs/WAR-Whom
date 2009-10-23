@@ -2,8 +2,9 @@
 <ModuleFile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <UiMod name="whom" version="1.0" date="22/10/2009" >
         
-        <Author name="tzs" email="tzs@tzs.net" />
-        <Description text="count classes and archetypes" />
+        <Author name="tzs"/>
+        <Description text="count classes and archetypes"/>
+        <VersionSettings gameVersion="1.3.2" />
         
         <Dependencies>
             <Dependency name="EA_ChatWindow"/>

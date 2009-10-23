@@ -58,6 +58,7 @@ function whom.OnSlash(args)
     whom.details = false
     if ( args == L"-v" ) then whom.details = true end
     whom.running = true
+    whom.zones = {}
     whom.count = 0
     whom.countT1 = 0
     whom.countT2 = 0
@@ -84,11 +85,8 @@ end
 
 function whom.CountClass(counter, career, rank)
     local classindex = 0
-    local searchcareer = tostring(career)
-    local slen = string.len(searchcareer)
-    searchcareer = string.sub(searchcareer,1,slen-2)
     for i = 1, 25 do
-        if ( searchcareer == tostring(whom.careers[i]) ) then
+        if ( WStringsCompareIgnoreGrammer(career, whom.careers[i]) == 0 ) then
             classindex = i
             break
         end
@@ -141,6 +139,10 @@ end
 function whom.Tally(data)
     for key, value in ipairs( data ) do
         whom.count = whom.count + 1
+        if ( whom.zones[value.zoneID] == nil ) then
+            whom.zones[value.zoneID] = 0
+        end
+        whom.zones[value.zoneID] = whom.zones[value.zoneID] + 1
         --EA_ChatWindow.Print(value.career..towstring(", rank "..value.rank.." in "..value.zoneID))
         if ( value.rank <= 11 ) then
             whom.countT1 = whom.countT1 + 1
@@ -161,7 +163,7 @@ end
 function whom.OnSearch()
     if ( whom.running == false ) then return end
     local data = GetSearchList()
-    if ( data ~= nul )
+    if ( data ~= nil )
     then
         if ( #data < 30 ) then
             whom.Tally(data)
@@ -193,7 +195,16 @@ function whom.OnSearch()
             whom.ShowCount( whom.classesT4, "Tier 4", whom.countT4)
             whom.ShowCount( whom.classes40, "R40", whom.count40)
         end
-
+        local zt = {}
+        for zid, count in pairs(whom.zones) do
+           table.insert(zt,zid) 
+        end
+        table.sort(zt, function(a,b) return whom.zones[a] < whom.zones[b] end)
+        for i, zid in ipairs(zt) do
+            local name = GetZoneName(zid)
+            local count = whom.zones[zid]
+            EA_ChatWindow.Print(towstring("  "..count)..L" players in "..name)
+        end
         EA_ChatWindow.Print(towstring("**** Total players found: "..whom.count.. " ****"))
         if ( whom.overflow > 0 ) then
             EA_ChatWindow.Print(L"whom: WARNING some level/class combinations were skipped due to overflow! Count is not accurate!")
