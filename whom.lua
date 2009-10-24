@@ -69,14 +69,18 @@ end
 function whom.OnSlash(args)
     EA_ChatWindow.Print(L"Checking for players...this will take a while")
     whom.details = false
+    local level_low = 1
+    local level_high = 40
     if ( args == L"-v" ) then whom.details = true end
+    if ( args == L"-t4" ) then level_low = 32 end
+    if ( args == L"-40" ) then level_low = 40 end
     whom.running = true
     whom.tcount = { {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}}
     whom.tdetails = { {}, {}, {}, {}, {} }
     whom.zones = {}
     whom.count = 0
     whom.overflow = 0
-    for level = 1, 40 do
+    for level = level_low, level_high do
         whom.AddItem( L"", -1, level)
     end
     if ( whom.registered == false ) then
@@ -95,10 +99,6 @@ function whom.Tally(data)
         local archtypeIndex = whom.classIndexToArchtypeIndex( classIndex )
         whom.tcount[tier][archtypeIndex] = whom.tcount[tier][archtypeIndex] + 1
         whom.tcount[tier][5] = whom.tcount[tier][5] + 1        
-        if ( tier == 5 ) then
-            whom.tcount[4][archtypeIndex] = whom.tcount[4][archtypeIndex] + 1
-            whom.tcount[4][5] = whom.tcount[4][5] + 1
-        end
         
         if ( whom.zones[value.zoneID] == nil ) then
             whom.zones[value.zoneID] = {0,0,0,0,0,0,0,0,0,0}
@@ -106,20 +106,11 @@ function whom.Tally(data)
         whom.zones[value.zoneID][archtypeIndex] = whom.zones[value.zoneID][archtypeIndex] + 1
         whom.zones[value.zoneID][5] = whom.zones[value.zoneID][5] + 1
         whom.zones[value.zoneID][5+tier] = whom.zones[value.zoneID][5+tier] + 1
-        if ( tier == 5 ) then
-            whom.zones[value.zoneID][9] = whom.zones[value.zoneID][9] + 1
-        end
         
         if ( whom.tdetails[tier][classIndex] == nil ) then
             whom.tdetails[tier][classIndex] = 0
         end
         whom.tdetails[tier][classIndex] = whom.tdetails[tier][classIndex] + 1
-        if ( tier == 5 ) then
-            if ( whom.tdetails[4][classIndex] == nil ) then
-                whom.tdetails[4][classIndex] = 0
-            end
-            whom.tdetails[4][classIndex] = whom.tdetails[4][classIndex] + 1
-        end
     end
 end
 
@@ -171,7 +162,7 @@ function whom.OnSearch()
             for i = 5, 1, -1 do
                if ( whom.zones[zid][5+i] > 0 ) then
                    out = out .. L" " .. whom.zones[zid][5+i] .. L" " .. label[i]
-                   if ( i < 5) then more = more - whom.zones[zid][5+i] end 
+                   more = more - whom.zones[zid][5+i] 
                    if ( more > 0 ) then out = out .. L"," end
                end 
             end
@@ -186,17 +177,12 @@ function whom.OnSearch()
         for tier = 1, 5 do
             local tname = "Tier "..tier
             if ( tier == 5 ) then tname = "R40" end
-            local tanks = whom.tcount[tier][1] 
-            local mdps = whom.tcount[tier][2] 
-            local rdps = whom.tcount[tier][3] 
-            local healers = whom.tcount[tier][4] 
-            local total = whom.tcount[tier][5]
             EA_ChatWindow.Print(towstring(  tname .. ": "
-                                        ..  total .. " player. "
-                                        ..  tanks .. " tanks, "
-                                        ..  mdps .. " mdps, "
-                                        ..  rdps .. " rdps, "
-                                        ..  healers .. " healers"))
+                                        ..  whom.tcount[tier][5] .. " player. "
+                                        ..  whom.tcount[tier][1] .. " tanks, "
+                                        ..  whom.tcount[tier][2] .. " mdps, "
+                                        ..  whom.tcount[tier][3] .. " rdps, "
+                                        ..  whom.tcount[tier][4] .. " healers"))
             if ( whom.details ) then
                 local tierdata = whom.tdetails[tier]
                 local classes = whom.keys(tierdata)
