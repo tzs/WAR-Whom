@@ -7,10 +7,6 @@ whom = {}
 -- in Lua yet! If only Mythic had picked Perl for their interface language...
 
 function whom.Initialize()
-    EA_ChatWindow.Print(towstring("Whom available. Type /whom for population report"))
-    LibSlash.RegisterWSlashCmd("whom", function(args) whom.OnSlash(args) end)
-    whom.head = nil
-    whom.tail = nil
     whom.registered = false
     whom.careers = {
         -- Tank
@@ -32,62 +28,80 @@ function whom.Initialize()
         -- Female Sorcerer (player is, of course, actually male)
         L"Sorceress"
     }
+    LibSlash.RegisterWSlashCmd("whom", function(args) whom.OnSlash(args) end)
+    EA_ChatWindow.Print(towstring("Whom available. Type /whom for population report"))
 end
 
-function whom.Search()
-    whom.item = whom.nextItem()
-    if ( whom.item ~= nil ) then
-        local zone = {}
-        zone[1] = whom.item.zone
-        SendPlayerSearchRequest( L"", L"", whom.item.career, zone, whom.item.level, whom.item.level, false )
-    end
-end
-
-function whom.AddItem(career, zone, level)
-   local item = {}
-   item.next = nil
-   item.career = career
-   item.zone = zone
-   item.level = level
-   if ( whom.head == nil ) then
-       whom.head = item
-       whom.tail = item
-   else
-       whom.tail.next = item
-       whom.tail = item
-   end
-end
-
-function whom.nextItem()
-    local item = whom.head
-    if ( whom.head ~= nil ) then
-        whom.head = whom.head.next 
-    end
-    return item
-end
-
-function whom.OnSlash(args)
-    EA_ChatWindow.Print(L"Checking for players...this will take a while")
-    whom.details = false
-    local level_low = 1
-    local level_high = 40
-    if ( args == L"-v" ) then whom.details = true end
-    if ( args == L"-t4" ) then level_low = 32 end
-    if ( args == L"-40" ) then level_low = 40 end
-    whom.running = true
+function whom.reset()
+    whom.running = false
     whom.tcount = { {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}}
     whom.tdetails = { {}, {}, {}, {}, {} }
     whom.zones = {}
     whom.count = 0
     whom.overflow = 0
-    for level = level_low, level_high do
-        whom.AddItem( L"", -1, level)
+    whom.details = false
+    whom.head = nil
+    whom.tail = nil    
+end
+
+function whom.OnSlash(args)
+    local wasrunning = whom.running
+    whom.reset()
+    if ( wasrunning == true ) then
+        EA_ChatWindow.Print(L"whom: stopped")
+        return
+    end
+    
+    local levels = {}
+    for i, arg in ipairs(whom.words(WStringToString(args))) do
+        if ( arg == "-c" ) then     whom.details = true
+        elseif ( arg == "t1" ) then for j=1,11 do levels[j]=1 end
+        elseif ( arg == "t2" ) then for j=12,21 do levels[j]=1 end
+        elseif ( arg == "t3" ) then for j=22,31 do levels[j]=1 end
+        elseif ( arg == "t4" ) then for j=32,40,1 do levels[j]=1 end
+        elseif ( arg == "40" ) then levels[40]=1
+        else
+            EA_ChatWindow.Print(towstring("whom: unrecognized option: "..arg))
+        end
+    end
+    EA_ChatWindow.Print(L"Checking for players...this might take a while...")
+
+    for level in pairs(levels) do
+        whom.queueSearch(L"", {-1}, level)
+    end
+    if ( whom.head == nil ) then
+        for level = 1,40 do
+            whom.queueSearch(L"", {-1}, level)
+        end
     end
     if ( whom.registered == false ) then
         RegisterEventHandler( SystemData.Events.SOCIAL_SEARCH_UPDATED, "whom.OnSearch" )
         whom.registered = true
     end
+    whom.running = true
     whom.Search()
+end
+
+function whom.Search()
+    whom.item = whom.head
+    if ( whom.item ~= nil ) then
+        whom.head = whom.item.next
+        SendPlayerSearchRequest( L"", L"", whom.item.career, whom.item.zone, whom.item.level, whom.item.level, false )
+    end
+end
+
+function whom.queueSearch(career, zone, level)
+    local item = {}
+    item.next = nil
+    item.career = career
+    item.zone = zone
+    item.level = level
+    if ( whom.head == nil ) then
+        whom.head = item
+    else
+        whom.tail.next = item
+    end
+    whom.tail = item
 end
 
 function whom.Tally(data)
@@ -129,11 +143,26 @@ function whom.OnSearch()
                     offset = 12
                 end
                 for i = 1, 12 do
-                    whom.AddItem( whom.careers[i+offset], whom.item.zone, whom.item.level )
+                    whom.queueSearch( whom.careers[i+offset], whom.item.zone, whom.item.level )
                 end
             else
-                whom.overflow = whom.overflow + 1
-                whom.Tally(data)
+                if ( whom.item.zone[1] == -1 )
+                then
+                    local zids = GetZoneIDList()
+                    local t1, t2 = whom.splitList( GetZoneIDList() )
+                    whom.queueSearch( whom.item.career, t1, whom.item.level )
+                    whom.queueSearch( whom.item.career, t2, whom.item.level )
+                else
+                    if ( #whom.item.zone == 1 )
+                    then
+                        whom.overflow = whom.overflow + 1
+                        whom.Tally(data)
+                    else
+                        local t1, t2 = whom.splitList( whom.item.zone );
+                        whom.queueSearch( whom.item.career, t1, whom.item.level )
+                        whom.queueSearch( whom.item.career, t2, whom.item.level )
+                    end
+                end
             end
         end
     end
@@ -178,11 +207,11 @@ function whom.OnSearch()
             local tname = "Tier "..tier
             if ( tier == 5 ) then tname = "R40" end
             EA_ChatWindow.Print(towstring(  tname .. ": "
-                                        ..  whom.tcount[tier][5] .. " player. "
-                                        ..  whom.tcount[tier][1] .. " tanks, "
+                                        ..  whom.tcount[tier][5] .. " players. "
+                                        ..  whom.tcount[tier][1] .. " tank, "
                                         ..  whom.tcount[tier][2] .. " mdps, "
                                         ..  whom.tcount[tier][3] .. " rdps, "
-                                        ..  whom.tcount[tier][4] .. " healers"))
+                                        ..  whom.tcount[tier][4] .. " healer"))
             if ( whom.details ) then
                 local tierdata = whom.tdetails[tier]
                 local classes = whom.keys(tierdata)
@@ -193,6 +222,7 @@ function whom.OnSearch()
                 end
             end
         end
+        whom.reset()
     end
 end
     
@@ -202,6 +232,19 @@ function whom.keys(t)
         table.insert(k, key)
     end
     return k
+end
+
+function whom.splitList(t)
+    local t1 = {}
+    local t2 = {}
+    local s = 0
+    for i, v in ipairs(t) do
+        if ( s == 0 ) then table.insert(t1, v)
+        else                table.insert(t2,v)
+        end
+        s = 1 - s
+    end
+    return t1, t2
 end
 
 function whom.rankToTier(rank)
@@ -236,3 +279,10 @@ function whom.classIndexToArchtypeIndex(classindex)
         return 4
     end
 end
+
+function whom.words(str)
+  local t = {}
+  local function helper(word) table.insert(t, word) return "" end
+  if not str:gsub("[^%s]+", helper):find"%S" then return t end
+end
+
