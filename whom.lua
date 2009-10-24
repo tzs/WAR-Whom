@@ -6,7 +6,7 @@ whom = {}
 -- non-braindead. I already know them--just haven't learned how to do them
 -- in Lua yet! If only Mythic had picked Perl for their interface language...
 
-function whom.Initialize()
+function whom.initialize()
     whom.registered = false
     whom.careers = {
         -- Tank
@@ -28,7 +28,7 @@ function whom.Initialize()
         -- Female Sorcerer (player is, of course, actually male)
         L"Sorceress"
     }
-    LibSlash.RegisterWSlashCmd("whom", function(args) whom.OnSlash(args) end)
+    LibSlash.RegisterWSlashCmd("whom", function(args) whom.onSlashCmd(args) end)
     EA_ChatWindow.Print(towstring("Whom available. Type /whom for population report"))
 end
 
@@ -44,7 +44,7 @@ function whom.reset()
     whom.tail = nil    
 end
 
-function whom.OnSlash(args)
+function whom.onSlashCmd(args)
     local wasrunning = whom.running
     whom.reset()
     if ( wasrunning == true ) then
@@ -75,14 +75,14 @@ function whom.OnSlash(args)
         end
     end
     if ( whom.registered == false ) then
-        RegisterEventHandler( SystemData.Events.SOCIAL_SEARCH_UPDATED, "whom.OnSearch" )
+        RegisterEventHandler( SystemData.Events.SOCIAL_SEARCH_UPDATED, "whom.onSearchUpdated" )
         whom.registered = true
     end
     whom.running = true
-    whom.Search()
+    whom.search()
 end
 
-function whom.Search()
+function whom.search()
     whom.item = whom.head
     if ( whom.item ~= nil ) then
         whom.head = whom.item.next
@@ -104,7 +104,7 @@ function whom.queueSearch(career, zone, level)
     whom.tail = item
 end
 
-function whom.Tally(data)
+function whom.tally(data)
     for key, value in ipairs( data ) do
         whom.count = whom.count + 1
         
@@ -128,13 +128,13 @@ function whom.Tally(data)
     end
 end
 
-function whom.OnSearch()
+function whom.onSearchUpdated()
     if ( whom.running == false ) then return end
     local data = GetSearchList()
     if ( data ~= nil )
     then
         if ( #data < 30 ) then
-            whom.Tally(data)
+            whom.tally(data)
         else
             if ( whom.item.career == L"" )
             then
@@ -156,7 +156,7 @@ function whom.OnSearch()
                     if ( #whom.item.zone == 1 )
                     then
                         whom.overflow = whom.overflow + 1
-                        whom.Tally(data)
+                        whom.tally(data)
                     else
                         local t1, t2 = whom.splitList( whom.item.zone );
                         whom.queueSearch( whom.item.career, t1, whom.item.level )
@@ -167,7 +167,7 @@ function whom.OnSearch()
         end
     end
     if (whom.head ~= nil ) then
-        whom.Search()
+        whom.search()
     else
         whom.running = false
         

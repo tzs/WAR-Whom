@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ModuleFile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <UiMod name="whom" version="1.0" date="22/10/2009" >
+    <UiMod name="whom" version="1.0" date="24/10/2009" >
         
         <Author name="tzs"/>
         <Description text="count classes and archetypes"/>
@@ -16,7 +16,7 @@
         </Files>
         
         <OnInitialize>
-            <CallFunction name="whom.Initialize" />
+            <CallFunction name="whom.initialize" />
         </OnInitialize>
         <OnUpdate/>
         <OnShutdown/>
