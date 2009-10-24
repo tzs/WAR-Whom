@@ -7,7 +7,7 @@ whom = {}
 -- in Lua yet! If only Mythic had picked Perl for their interface language...
 
 function whom.Initialize()
-    EA_ChatWindow.Print(towstring("Hello! whom add-on is available"))
+    EA_ChatWindow.Print(towstring("Whom available. Type /whom for population report"))
     LibSlash.RegisterWSlashCmd("whom", function(args) whom.OnSlash(args) end)
     whom.queue = {}
     whom.writepos = 0
@@ -143,7 +143,6 @@ function whom.Tally(data)
             whom.zones[value.zoneID] = 0
         end
         whom.zones[value.zoneID] = whom.zones[value.zoneID] + 1
-        --EA_ChatWindow.Print(value.career..towstring(", rank "..value.rank.." in "..value.zoneID))
         if ( value.rank <= 11 ) then
             whom.countT1 = whom.countT1 + 1
             whom.CountClass( whom.classesT1, value.career, value.rank )
