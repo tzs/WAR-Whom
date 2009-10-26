@@ -8,6 +8,7 @@ whom = {}
 
 function whom.initialize()
     whom.registered = false
+    whom.reset()
     whom.careers = {
         -- Tank
         L"Ironbreaker", L"Swordmaster", L"Knight of the Blazing Sun",
@@ -34,6 +35,7 @@ end
 
 function whom.reset()
     whom.running = false
+    whom.finishing = false
     whom.tcount = { {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}}
     whom.tdetails = { {}, {}, {}, {}, {} }
     whom.zones = {}
@@ -41,7 +43,8 @@ function whom.reset()
     whom.overflow = 0
     whom.details = false
     whom.head = nil
-    whom.tail = nil    
+    whom.tail = nil
+    whom.here = false    
 end
 
 function whom.onSlashCmd(args)
@@ -60,18 +63,24 @@ function whom.onSlashCmd(args)
         elseif ( arg == "t3" ) then for j=22,31 do levels[j]=1 end
         elseif ( arg == "t4" ) then for j=32,40,1 do levels[j]=1 end
         elseif ( arg == "40" ) then levels[40]=1
+        elseif ( arg == "here" ) then whom.here = true
         else
             EA_ChatWindow.Print(towstring("whom: unrecognized option: "..arg))
         end
     end
     EA_ChatWindow.Print(L"Checking for players...this might take a while...")
-
-    for level in pairs(levels) do
-        whom.queueSearch(L"", {-1}, level)
-    end
-    if ( whom.head == nil ) then
-        for level = 1,40 do
-            whom.queueSearch(L"", {-1}, level)
+    
+    if ( whom.here == true )
+    then
+        whom.queueCareerSearch( {GameData.Player.zone}, 1, 40 )
+    else
+        for level in pairs(levels) do
+            whom.queueSearch(L"", {-1}, level, level )
+        end
+        if ( whom.head == nil ) then
+            for level = 1,40 do
+                whom.queueSearch(L"", {-1}, level, level )
+            end
         end
     end
     if ( whom.registered == false ) then
@@ -86,16 +95,17 @@ function whom.search()
     whom.item = whom.head
     if ( whom.item ~= nil ) then
         whom.head = whom.item.next
-        SendPlayerSearchRequest( L"", L"", whom.item.career, whom.item.zone, whom.item.level, whom.item.level, false )
+        SendPlayerSearchRequest( L"", L"", whom.item.career, whom.item.zone, whom.item.low, whom.item.high, false )
     end
 end
 
-function whom.queueSearch(career, zone, level)
+function whom.queueSearch(career, zone, low, high)
     local item = {}
     item.next = nil
     item.career = career
     item.zone = zone
-    item.level = level
+    item.low = low
+    item.high = high
     if ( whom.head == nil ) then
         whom.head = item
     else
@@ -128,102 +138,139 @@ function whom.tally(data)
     end
 end
 
+function whom.queueCareerSearch( zones, low, high)
+    local offset = 0
+    if ( GameData.Player.realm == GameData.Realm.DESTRUCTION ) then
+        offset = 12
+    end
+    for i = 1, 12 do
+        whom.queueSearch( whom.careers[i+offset], zones, low, high )
+    end
+end   
+
 function whom.onSearchUpdated()
-    if ( whom.running == false ) then return end
-    local data = GetSearchList()
-    if ( data ~= nil )
+    if ( whom.running == false )
     then
-        if ( #data < 30 ) then
-            whom.tally(data)
-        else
-            if ( whom.item.career == L"" )
-            then
-                local offset = 0
-                if ( GameData.Player.realm == GameData.Realm.DESTRUCTION ) then
-                    offset = 12
-                end
-                for i = 1, 12 do
-                    whom.queueSearch( whom.careers[i+offset], whom.item.zone, whom.item.level )
-                end
+        return
+    end
+    if ( whom.finishing == true )
+    then
+        whom.running = false
+        whom.finishing = false
+        whom.displayResults()
+    else
+        local data = GetSearchList()
+        if ( data ~= nil and whom.finishing == false )
+        then
+            if ( #data < 30  ) then
+                whom.tally(data)
             else
-                if ( whom.item.zone[1] == -1 )
+                if ( whom.item.career == L"" )
                 then
-                    local zids = GetZoneIDList()
-                    local t1, t2 = whom.splitList( GetZoneIDList() )
-                    whom.queueSearch( whom.item.career, t1, whom.item.level )
-                    whom.queueSearch( whom.item.career, t2, whom.item.level )
+                    whom.queueCareerSearch( whom.item.zone, whom.item.low, whom.item.high )
                 else
-                    if ( #whom.item.zone == 1 )
+                    if ( whom.here == true )
                     then
                         whom.overflow = whom.overflow + 1
                         whom.tally(data)
+                    elseif ( whom.item.zone[1] == -1 )
+                    then
+                        local zids = GetZoneIDList()
+                        local t1, t2 = whom.splitList( GetZoneIDList() )
+                        whom.queueSearch( whom.item.career, t1, whom.item.low, whom.item.high )
+                        whom.queueSearch( whom.item.career, t2, whom.item.low, whom.item.high )
                     else
-                        local t1, t2 = whom.splitList( whom.item.zone );
-                        whom.queueSearch( whom.item.career, t1, whom.item.level )
-                        whom.queueSearch( whom.item.career, t2, whom.item.level )
+                        if ( #whom.item.zone == 1 )
+                        then
+                            whom.overflow = whom.overflow + 1
+                            whom.tally(data)
+                        else
+                            local t1, t2 = whom.splitList( whom.item.zone );
+                            whom.queueSearch( whom.item.career, t1, whom.item.low, whom.item.high )
+                            whom.queueSearch( whom.item.career, t2, whom.item.low, whom.item.high )
+                        end
                     end
                 end
             end
         end
+        if (whom.head ~= nil ) then
+            whom.search()
+        else
+            whom.finishing = true
+            local career = whom.careers[13]
+            if ( GameData.Player.realm == GameData.Realm.DESTRUCTION ) then
+                career = whom.careers[1]
+            end
+            whom.queueSearch( career, {-1}, 1, 1 )
+            whom.search()
+        end
     end
-    if (whom.head ~= nil ) then
-        whom.search()
-    else
-        whom.running = false
-        
-        local zones = whom.keys(whom.zones)
-        table.sort(zones, function(a,b) return whom.zones[a][5] < whom.zones[b][5] end)
-        for i, zid in ipairs(zones) do
-            local name = GetZoneName(zid)
-            local out = L"  "..whom.zones[zid][5]..L" in "..name..L".  "
-            local more = whom.zones[zid][5]
-            local label = {L"tank", L"mdps", L"rdps", L"healer"}
-            for i = 1, 4 do
-               if ( whom.zones[zid][i] > 0 ) then
-                    out = out .. L" " .. whom.zones[zid][i] .. L" " .. label[i]
-                    more = more - whom.zones[zid][i]
-                    if ( more > 0 ) then out = out .. L"," end
-                end 
-            end
-            out = out .. L" / "
-            label = {L"T1", L"T2", L"T3", L"T4", L"R40"}
-            more = whom.zones[zid][5]
-            for i = 5, 1, -1 do
-               if ( whom.zones[zid][5+i] > 0 ) then
-                   out = out .. L" " .. whom.zones[zid][5+i] .. L" " .. label[i]
-                   more = more - whom.zones[zid][5+i] 
-                   if ( more > 0 ) then out = out .. L"," end
-               end 
-            end
-            EA_ChatWindow.Print(out)
+end
+
+function whom.displayResults()
+    local zones = whom.keys(whom.zones)
+    table.sort(zones, function(a,b) return whom.zones[a][5] < whom.zones[b][5] end)
+    for i, zid in ipairs(zones) do
+        local name = GetZoneName(zid)
+        local out = L"  "..whom.zones[zid][5]..L" in "..name..L".  "
+        local more = whom.zones[zid][5]
+        local label = {L"tank", L"mdps", L"rdps", L"healer"}
+        for i = 1, 4 do
+           if ( whom.zones[zid][i] > 0 ) then
+                out = out .. L" " .. whom.zones[zid][i] .. L" " .. label[i]
+                more = more - whom.zones[zid][i]
+                if ( more > 0 ) then out = out .. L"," end
+            end 
         end
-        
-        EA_ChatWindow.Print(towstring("**** Total players found: "..whom.count.. " ****"))
-        if ( whom.overflow > 0 ) then
-            EA_ChatWindow.Print(L"whom: WARNING some level/class combinations were skipped due to overflow! Count is not accurate!")
+        out = out .. L" / "
+        label = {L"T1", L"T2", L"T3", L"T4", L"R40"}
+        more = whom.zones[zid][5]
+        for i = 5, 1, -1 do
+           if ( whom.zones[zid][5+i] > 0 ) then
+               out = out .. L" " .. whom.zones[zid][5+i] .. L" " .. label[i]
+               more = more - whom.zones[zid][5+i] 
+               if ( more > 0 ) then out = out .. L"," end
+           end 
         end
-        
-        for tier = 1, 5 do
-            local tname = "Tier "..tier
-            if ( tier == 5 ) then tname = "R40" end
-            EA_ChatWindow.Print(towstring(  tname .. ": "
-                                        ..  whom.tcount[tier][5] .. " players. "
-                                        ..  whom.tcount[tier][1] .. " tank, "
-                                        ..  whom.tcount[tier][2] .. " mdps, "
-                                        ..  whom.tcount[tier][3] .. " rdps, "
-                                        ..  whom.tcount[tier][4] .. " healer"))
-            if ( whom.details ) then
-                local tierdata = whom.tdetails[tier]
-                local classes = whom.keys(tierdata)
-                table.sort(classes)
-                for i, classIndex in pairs(classes) do
-                    local count = tierdata[classIndex]
-                    EA_ChatWindow.Print(towstring("  "..count.. " ")..whom.careers[classIndex])
-                end
-            end
-        end
-        whom.reset()
+        EA_ChatWindow.Print(out)
     end
+
+    EA_ChatWindow.Print(towstring("**** Total players found: "..whom.count.. " ****"))
+    if ( whom.overflow > 0 ) then
+        EA_ChatWindow.Print(L"whom: WARNING some level/class combinations were skipped due to overflow! Count is not accurate!")
+    end
+
+    for tier = 1, 5 do
+        local tname = "Tier "..tier
+        if ( tier == 5 ) then tname = "R40" end
+        EA_ChatWindow.Print(towstring(  tname .. ": "
+                                    ..  whom.tcount[tier][5] .. " players. "
+                                    ..  whom.tcount[tier][1] .. " tank, "
+                                    ..  whom.tcount[tier][2] .. " mdps, "
+                                    ..  whom.tcount[tier][3] .. " rdps, "
+                                    ..  whom.tcount[tier][4] .. " healer"))
+        if ( whom.details ) then
+            local tierdata = whom.tdetails[tier]
+            local classes = whom.keys(tierdata)
+            table.sort(classes)
+            for i, classIndex in pairs(classes) do
+                local count = tierdata[classIndex]
+                EA_ChatWindow.Print(towstring("  "..count.. " ")..whom.careers[classIndex])
+            end
+        end
+    end
+end
+
+function whom.p(...)
+    local out = L""
+    for i, part in ipairs(arg) do
+        if ( type(part) == "wstring" ) then
+            out = out .. part
+        else
+            out = out .. towstring(""..part)
+        end
+    end
+    EA_ChatWindow.Print(out)
 end
     
 function whom.keys(t)
