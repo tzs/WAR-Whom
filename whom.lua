@@ -76,7 +76,7 @@ function whom.onSlashCmd(args)
     then
         if ( whom.sc ) then
             for i, data in ipairs (GameData.ScenarioQueueData) do
-                if ( data.zone ~= 0 ) then
+                if ( data.id ~= 0 ) then
                     whom.queueSearch( L"", {data.zone}, 1, 40 )
                 end
             end
@@ -84,9 +84,12 @@ function whom.onSlashCmd(args)
             whom.queueCareerSearch( {GameData.Player.zone}, 1, 40 )
         end
     else
-        for level in pairs(levels) do
+        local to_search = whom.keys(levels)
+        table.sort(to_search, function(a,b) return a<b end)
+        for i, level in ipairs(to_search) do
             whom.queueSearch( L"", {-1}, level, level )
         end
+
         if ( whom.head == nil ) then
             for level = 1,40 do
                 whom.queueSearch( L"", {-1}, level, level )
