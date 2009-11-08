@@ -30,7 +30,7 @@ function whom.initialize()
         L"Sorceress"
     }
     LibSlash.RegisterWSlashCmd("whom", function(args) whom.onSlashCmd(args) end)
-    EA_ChatWindow.Print(towstring("Whom available. Type /whom for population report"))
+    whom.p("Whom available. Type /whom for population report")
 end
 
 function whom.reset()
@@ -52,7 +52,7 @@ function whom.onSlashCmd(args)
     local wasrunning = whom.running
     whom.reset()
     if ( wasrunning == true ) then
-        EA_ChatWindow.Print(L"whom: stopped")
+        whom.p("whom: stopped")
         return
     end
     
@@ -67,10 +67,10 @@ function whom.onSlashCmd(args)
         elseif ( arg == "here" ) then whom.here = true; whom.sc = false
         elseif ( arg == "sc" ) then whom.here = true; whom.sc = true
         else
-            EA_ChatWindow.Print(towstring("whom: unrecognized option: "..arg))
+            whom.p("whom: unrecognized option: ", arg)
         end
     end
-    EA_ChatWindow.Print(L"Checking for players...this might take a while...")
+    whom.p("Checking for players...this might take a while...")
     
     if ( whom.here == true )
     then
@@ -79,6 +79,10 @@ function whom.onSlashCmd(args)
                 if ( data.id ~= 0 ) then
                     whom.queueSearch( L"", {data.zone}, 1, 40 )
                 end
+            end
+            if ( whom.head == nil ) then
+               whom.p("No scenarios are available to you right now.")
+               return 
             end
         else
             whom.queueCareerSearch( {GameData.Player.zone}, 1, 40 )
@@ -245,30 +249,30 @@ function whom.displayResults()
                if ( more > 0 ) then out = out .. L"," end
            end 
         end
-        EA_ChatWindow.Print(out)
+        whom.p(out)
     end
 
-    EA_ChatWindow.Print(towstring("**** Total players found: "..whom.count.. " ****"))
+    whom.p("**** Total players found: ", whom.count, " ****")
     if ( whom.overflow > 0 ) then
-        EA_ChatWindow.Print(L"whom: WARNING some level/class combinations were skipped due to overflow! Count is not accurate!")
+        whom.p("whom: WARNING some level/class combinations were skipped due to overflow! Count is not accurate!")
     end
 
     for tier = 1, 5 do
         local tname = "Tier "..tier
         if ( tier == 5 ) then tname = "R40" end
-        EA_ChatWindow.Print(towstring(  tname .. ": "
-                                    ..  whom.tcount[tier][5] .. " players. "
-                                    ..  whom.tcount[tier][1] .. " tank, "
-                                    ..  whom.tcount[tier][2] .. " mdps, "
-                                    ..  whom.tcount[tier][3] .. " rdps, "
-                                    ..  whom.tcount[tier][4] .. " healer"))
+        whom.p( tname, ": ",
+                whom.tcount[tier][5], " players. ",
+                whom.tcount[tier][1], " tank, ",
+                whom.tcount[tier][2], " mdps, ",
+                whom.tcount[tier][3], " rdps, ",
+                whom.tcount[tier][4], " healer")
         if ( whom.details ) then
             local tierdata = whom.tdetails[tier]
             local classes = whom.keys(tierdata)
             table.sort(classes)
             for i, classIndex in pairs(classes) do
                 local count = tierdata[classIndex]
-                EA_ChatWindow.Print(towstring("  "..count.. " ")..whom.careers[classIndex])
+                whom.p("  ", count, " ", whom.careers[classIndex])
             end
         end
     end
