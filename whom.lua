@@ -44,7 +44,8 @@ function whom.reset()
     whom.details = false
     whom.head = nil
     whom.tail = nil
-    whom.here = false    
+    whom.here = false  
+    whom.sc = false  
 end
 
 function whom.onSlashCmd(args)
@@ -63,7 +64,8 @@ function whom.onSlashCmd(args)
         elseif ( arg == "t3" ) then for j=22,31 do levels[j]=1 end
         elseif ( arg == "t4" ) then for j=32,40,1 do levels[j]=1 end
         elseif ( arg == "40" ) then levels[40]=1
-        elseif ( arg == "here" ) then whom.here = true
+        elseif ( arg == "here" ) then whom.here = true; whom.sc = false
+        elseif ( arg == "sc" ) then whom.here = true; whom.sc = true
         else
             EA_ChatWindow.Print(towstring("whom: unrecognized option: "..arg))
         end
@@ -72,14 +74,22 @@ function whom.onSlashCmd(args)
     
     if ( whom.here == true )
     then
-        whom.queueCareerSearch( {GameData.Player.zone}, 1, 40 )
+        if ( whom.sc ) then
+            for i, data in ipairs (GameData.ScenarioQueueData) do
+                if ( data.zone ~= 0 ) then
+                    whom.queueSearch( L"", {data.zone}, 1, 40 )
+                end
+            end
+        else
+            whom.queueCareerSearch( {GameData.Player.zone}, 1, 40 )
+        end
     else
         for level in pairs(levels) do
-            whom.queueSearch(L"", {-1}, level, level )
+            whom.queueSearch( L"", {-1}, level, level )
         end
         if ( whom.head == nil ) then
             for level = 1,40 do
-                whom.queueSearch(L"", {-1}, level, level )
+                whom.queueSearch( L"", {-1}, level, level )
             end
         end
     end
