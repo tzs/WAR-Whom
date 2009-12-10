@@ -17,7 +17,7 @@ function whom.initialize()
         -- RDPS
         L"Engineer", L"Bright Wizard", L"Shadow Warrior",
         -- Healer
-        L"Warrior Priest", L"Archmage", L"Rune Priest",
+        L"Warrior Priest", L"Archmage", L"Runepriest",
         -- Tank
         L"Black Orc", L"Chosen", L"Blackguard",
         -- MDPS
@@ -135,9 +135,11 @@ function whom.tally(data)
     for key, value in ipairs( data ) do
         whom.count = whom.count + 1
         
+        
         local tier = whom.rankToTier( value.rank )
         local classIndex = whom.careerNameToClassIndex( value.career )
         local archtypeIndex = whom.classIndexToArchtypeIndex( classIndex )
+
         whom.tcount[tier][archtypeIndex] = whom.tcount[tier][archtypeIndex] + 1
         whom.tcount[tier][5] = whom.tcount[tier][5] + 1        
         
@@ -180,8 +182,10 @@ function whom.onSearchUpdated()
         if ( data ~= nil and whom.finishing == false )
         then
             if ( #data < 30  ) then
+                -- whom.p(#data," found for [",whom.item.career,"], ranks ",whom.item.low,"-",whom.item.high,". zone list:",#whom.item.zone," zones starting with ",GetZoneName(whom.item.zone[1]))
                 whom.tally(data)
             else
+                -- whom.p("Overflow for [",whom.item.career,"], ranks ",whom.item.low,"-",whom.item.high,". zone list:",#whom.item.zone," zones starting with ",GetZoneName(whom.item.zone[1]))
                 if ( whom.item.career == L"" )
                 then
                     whom.queueCareerSearch( whom.item.zone, whom.item.low, whom.item.high )
@@ -287,7 +291,7 @@ function whom.p(...)
             out = out .. towstring(""..part)
         end
     end
-    EA_ChatWindow.Print(out)
+    EA_ChatWindow.Print(out, ChatSettings.Channels[SystemData.ChatLogFilters.SAY].id)
 end
     
 function whom.keys(t)
