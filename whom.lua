@@ -40,7 +40,7 @@ function whom.reset()
     whom.tdetails = { {}, {}, {}, {}, {} }
     whom.zones = {}
     whom.count = 0
-    whom.overflow = 0
+    whom.overflow = {}
     whom.details = false
     whom.head = nil
     whom.tail = nil
@@ -131,6 +131,16 @@ function whom.queueSearch(career, zone, low, high)
     whom.tail = item
 end
 
+function whom.record_overflow()
+    local level = L"" .. whom.item.low
+    if ( whom.item.low ~= whom.item.high ) then
+        level = whom.item.low .. L"-" .. whom.item.high
+    end
+    table.insert(whom.overflow, L"*** Too many to count, only first 30 counted of level " .. level
+                                .. L" " .. whom.item.career
+                                .. L" in " .. GetZoneName(whom.item.zone[1]) )
+end
+
 function whom.tally(data)
     for key, value in ipairs( data ) do
         whom.count = whom.count + 1
@@ -181,7 +191,7 @@ function whom.onSearchUpdated()
         local data = GetSearchList()
         if ( data ~= nil and whom.finishing == false )
         then
-            if ( #data < 30  ) then
+            if ( #data < 30 ) then
                 -- whom.p(#data," found for [",whom.item.career,"], ranks ",whom.item.low,"-",whom.item.high,". zone list:",#whom.item.zone," zones starting with ",GetZoneName(whom.item.zone[1]))
                 whom.tally(data)
             else
@@ -192,7 +202,7 @@ function whom.onSearchUpdated()
                 else
                     if ( whom.here == true )
                     then
-                        whom.overflow = whom.overflow + 1
+                        whom.record_overflow()
                         whom.tally(data)
                     elseif ( whom.item.zone[1] == -1 )
                     then
@@ -203,7 +213,7 @@ function whom.onSearchUpdated()
                     else
                         if ( #whom.item.zone == 1 )
                         then
-                            whom.overflow = whom.overflow + 1
+                            whom.record_overflow()
                             whom.tally(data)
                         else
                             local t1, t2 = whom.splitList( whom.item.zone );
@@ -257,8 +267,8 @@ function whom.displayResults()
     end
 
     whom.p("**** Total players found: ", whom.count, " ****")
-    if ( whom.overflow > 0 ) then
-        whom.p("whom: WARNING some level/class combinations were skipped due to overflow! Count is not accurate!")
+    for i, m in pairs(whom.overflow) do
+        whom.p(m)
     end
 
     for tier = 1, 5 do
