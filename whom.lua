@@ -44,8 +44,9 @@ function whom.reset()
     whom.details = false
     whom.head = nil
     whom.tail = nil
-    whom.here = false  
-    whom.sc = false  
+    whom.advisor = false
+    whom.players = {}
+    whom.sort_order = {}
 end
 
 function whom.onSlashCmd(args)
@@ -55,55 +56,148 @@ function whom.onSlashCmd(args)
         whom.p("whom: stopped")
         return
     end
-    
-    local levels = {}
+
+    local guilds = {}
+    local zones = {}
+    local ranges = {}
+    local want40 = false
+    local did_t1 = false
+    local did_t2 = false
+    local did_t3 = false
+    local did_t4 = false
+
     for i, arg in ipairs(whom.words(WStringToString(args))) do
-        if ( arg == "-c" ) then     whom.details = true
-        elseif ( arg == "t1" ) then for j=1,11 do levels[j]=1 end
-        elseif ( arg == "t2" ) then for j=12,21 do levels[j]=1 end
-        elseif ( arg == "t3" ) then for j=22,31 do levels[j]=1 end
-        elseif ( arg == "t4" ) then for j=32,40,1 do levels[j]=1 end
-        elseif ( arg == "40" ) then levels[40]=1
-        elseif ( arg == "here" ) then whom.here = true; whom.sc = false
-        elseif ( arg == "sc" ) then whom.here = true; whom.sc = true
-        else
-            whom.p("whom: unrecognized option: ", arg)
-        end
-    end
-    whom.p("Checking for players...this might take a while...")
-    
-    if ( whom.here == true )
-    then
-        if ( whom.sc ) then
+        if ( arg == "-d" ) then
+            whom.details = true
+        elseif ( arg == "-r" ) then
+            table.insert(whom.sort_order, 1)
+        elseif ( arg == "-c" ) then
+            table.insert(whom.sort_order, 2)
+        elseif ( arg == "-g" ) then
+            table.insert(whom.sort_order, 3)
+        elseif ( arg == "-z" ) then
+            table.insert(whom.sort_order, 4)
+        elseif ( arg == "-a" ) then
+            table.insert(whom.sort_order, 5)
+        elseif ( arg == "t1" and did_t1 == false ) then
+            table.insert(ranges, {1,11})
+            did_t1 = true
+        elseif ( arg == "t2" and did_t2 == false ) then
+            table.insert(ranges, {12,21})
+            did_t2 = true
+        elseif ( arg == "t3" and did_t3 == false ) then
+            table.insert(ranges, {22,31})
+            did_t3 = true
+        elseif ( arg == "t4" and did_t4 == false ) then
+            table.insert(ranges, {32,40});
+            did_t4 = true
+        elseif ( arg == "40" ) then
+            want40 = true
+        elseif ( arg == "here" ) then
+            zones = {GameData.Player.zone}
+        elseif ( arg == "sc" ) then
+            zones = {}
             for i, data in ipairs (GameData.ScenarioQueueData) do
                 if ( data.id ~= 0 ) then
-                    whom.queueSearch( L"", {data.zone}, 1, 40 )
+                    table.insert(zones, data.zone)
                 end
             end
-            if ( whom.head == nil ) then
-               whom.p("No scenarios are available to you right now.")
-               return 
+            if ( zones[1] == nil ) then
+                whom.p("No scenarios are available to you at this time and location.")
+                return
             end
+        elseif ( arg == "alliance" ) then
+            guilds = {}
+            for u, guild in ipairs( GetAllianceMemberData() ) do
+                table.insert(guilds, guild.name)
+            end
+            if ( guilds[1] == nil ) then
+                whom.p("You don't seem to be in an alliance.")
+                return
+            end
+        elseif ( arg == "guild" ) then
+            guilds = {GameData.Guild.m_GuildName}
+            if ( guilds[1] == L"" ) then
+                whom.p("You don't seem to be in a guild.")
+                return
+            end
+        elseif ( arg == "advisor" ) then
+            whom.advisor = true
+        elseif ( arg == "trinity" ) then
+            guilds = {L"gaiscioch", L"gaiscioch na nuada", L"gaiscioch na anu"}
+        elseif ( arg == "help" ) then
+            whom.p("Usage: /whom [options]")
+            whom.p("  If you give no options, default is to list all visible players")
+            whom.p("  If you specify one or more of the five following options, then")
+            whom.p("    only people of the given ranks will be included:")
+            whom.p("     t1     show ranks 1-11")
+            whom.p("     t2     show ranks 12-21")
+            whom.p("     t3     show ranks 22-31")
+            whom.p("     t4     show ranks 32-40")
+            whom.p("     40     show rank 40")
+            whom.p("  You can limit the search to your guild or your alliance with one of:")
+            whom.p("     guild")
+            whom.p("     alliance")
+            whom.p("  You can limit the search to your current zone with:")
+            whom.p("     here")
+            whom.p("  You can limit the search to the scenarios currently available to you with:")
+            whom.p("     sc")
+            whom.p("  You can limit the seach to people flagged as advisors with:")
+            whom.p("     advisor")
+            whom.p("  You can ask for a detailed class breakdown by tier with:")
+            whom.p("     -d")
+            whom.p("  NOTE: in prior releases of /whom, this was -c.")
+            whom.p("  You can specify the sort order of the player list with:")
+            whom.p("     -c    sort by career")
+            whom.p("     -a    sort by archetype")
+            whom.p("     -r    sort by rank")
+            whom.p("     -z    sort by zone")
+            whom.p("     -g    sort by guild")
+            whom.p("  If you do not specify a sort option, players are sorted by name")
+            whom.p("  If you specify one or more sort options, they are applied in")
+            whom.p("    in order. For instance, -c -r would sort by career, and then")
+            whom.p("    sort by rank within each career group, and then finally by")
+            whom.p("    name when more than one person has the same career/rank")
+            whom.p("  Here is an example:")
+            whom.p("    /whom -g -a alliance sc 40")
+            whom.p("  That would show you rank 40 people in your allliance who are")
+            whom.p("    currently in a scenario available to you, sorted by guild")
+            whom.p("    and archetype.")
+            return
         else
-            whom.queueCareerSearch( {GameData.Player.zone}, 1, 40 )
-        end
-    else
-        local to_search = whom.keys(levels)
-        table.sort(to_search, function(a,b) return a<b end)
-        for i, level in ipairs(to_search) do
-            whom.queueSearch( L"", {-1}, level, level )
-        end
-
-        if ( whom.head == nil ) then
-            for level = 1,40 do
-                whom.queueSearch( L"", {-1}, level, level )
-            end
+            whom.p("whom: unrecognized option: ", arg)
+            whom.p("For help, try: /whom help")
         end
     end
+
+    --table.insert(whom.sort_order, 1)
+
+    if ( guilds[1] == nil ) then
+        guilds = {L""}
+    end
+
+    if ( zones[1] == nil ) then
+        zones = {-1}
+    end
+
+    if ( want40 == true  and did_t4 == false ) then
+        table.insert(ranges, {40, 40})
+    end
+    if ( ranges[1] == nil) then
+        ranges = {{1,40}}
+    end
+
+    for i, g in ipairs (guilds) do
+       for j, r in ipairs (ranges) do
+            whom.queueSearch( g, L"", zones, r[1], r[2])
+       end
+    end
+
     if ( whom.registered == false ) then
         RegisterEventHandler( SystemData.Events.SOCIAL_SEARCH_UPDATED, "whom.onSearchUpdated" )
         whom.registered = true
     end
+
     whom.running = true
     whom.search()
 end
@@ -112,13 +206,16 @@ function whom.search()
     whom.item = whom.head
     if ( whom.item ~= nil ) then
         whom.head = whom.item.next
-        SendPlayerSearchRequest( L"", L"", whom.item.career, whom.item.zone, whom.item.low, whom.item.high, false )
+        -- player name, guild name, career name, zone ID array, low rank, high rank, advisor-only flag
+        -- names are L"" for wildcard, zone ID array of {-1} for all zones
+        SendPlayerSearchRequest( L"", whom.item.guild, whom.item.career, whom.item.zone, whom.item.low, whom.item.high, whom.advisor )
     end
 end
 
-function whom.queueSearch(career, zone, low, high)
+function whom.queueSearch(guild, career, zone, low, high)
     local item = {}
     item.next = nil
+    item.guild = guild
     item.career = career
     item.zone = zone
     item.low = low
@@ -129,6 +226,17 @@ function whom.queueSearch(career, zone, low, high)
         whom.tail.next = item
     end
     whom.tail = item
+end
+
+
+function whom.queueCareerSearch( guild, zones, low, high)
+    local offset = 0
+    if ( GameData.Player.realm == GameData.Realm.DESTRUCTION ) then
+        offset = 12
+    end
+    for i = 1, 12 do
+        whom.queueSearch( guild, whom.careers[i+offset], zones, low, high )
+    end
 end
 
 function whom.record_overflow()
@@ -143,39 +251,38 @@ end
 
 function whom.tally(data)
     for key, value in ipairs( data ) do
+        if ( whom.players[value.name] ~= nil ) then return end
+
         whom.count = whom.count + 1
-        
-        
+
         local tier = whom.rankToTier( value.rank )
         local classIndex = whom.careerNameToClassIndex( value.career )
         local archtypeIndex = whom.classIndexToArchtypeIndex( classIndex )
 
+        local zone = L"Unknown location"
+        if ( value.zoneID ~= 0) then
+            zone = GetZoneName( value.zoneID )
+        end
+
+        whom.players[value.name] = {value.rank, value.career, value.guildName, zone, archtypeIndex}
+
         whom.tcount[tier][archtypeIndex] = whom.tcount[tier][archtypeIndex] + 1
-        whom.tcount[tier][5] = whom.tcount[tier][5] + 1        
-        
+        whom.tcount[tier][5] = whom.tcount[tier][5] + 1
+
         if ( whom.zones[value.zoneID] == nil ) then
             whom.zones[value.zoneID] = {0,0,0,0,0,0,0,0,0,0}
         end
         whom.zones[value.zoneID][archtypeIndex] = whom.zones[value.zoneID][archtypeIndex] + 1
         whom.zones[value.zoneID][5] = whom.zones[value.zoneID][5] + 1
         whom.zones[value.zoneID][5+tier] = whom.zones[value.zoneID][5+tier] + 1
-        
+
         if ( whom.tdetails[tier][classIndex] == nil ) then
             whom.tdetails[tier][classIndex] = 0
         end
         whom.tdetails[tier][classIndex] = whom.tdetails[tier][classIndex] + 1
+
     end
 end
-
-function whom.queueCareerSearch( zones, low, high)
-    local offset = 0
-    if ( GameData.Player.realm == GameData.Realm.DESTRUCTION ) then
-        offset = 12
-    end
-    for i = 1, 12 do
-        whom.queueSearch( whom.careers[i+offset], zones, low, high )
-    end
-end   
 
 function whom.onSearchUpdated()
     if ( whom.running == false )
@@ -187,6 +294,7 @@ function whom.onSearchUpdated()
         whom.running = false
         whom.finishing = false
         whom.displayResults()
+        whom.reset()
     else
         local data = GetSearchList()
         if ( data ~= nil and whom.finishing == false )
@@ -198,29 +306,26 @@ function whom.onSearchUpdated()
                 -- whom.p("Overflow for [",whom.item.career,"], ranks ",whom.item.low,"-",whom.item.high,". zone list:",#whom.item.zone," zones starting with ",GetZoneName(whom.item.zone[1]))
                 if ( whom.item.career == L"" )
                 then
-                    whom.queueCareerSearch( whom.item.zone, whom.item.low, whom.item.high )
+                    whom.queueCareerSearch( whom.item.guild, whom.item.zone, whom.item.low, whom.item.high )
+                elseif ( whom.item.low ~= whom.item.high )
+                then
+                    local mid = math.floor((whom.item.low + whom.item.high) / 2)
+                    whom.queueSearch( whom.item.guild, whom.item.career, whom.item.zone, whom.item.low, mid )
+                    whom.queueSearch( whom.item.guild, whom.item.career, whom.item.zone, mid+1, whom.item.high )
+                elseif ( whom.item.zone[1] == -1 )
+                then
+                    local zids = GetZoneIDList()
+                    local t1, t2 = whom.splitList( GetZoneIDList() )
+                    whom.queueSearch( whom.item.guild, whom.item.career, t1, whom.item.low, whom.item.high )
+                    whom.queueSearch( whom.item.guild, whom.item.career, t2, whom.item.low, whom.item.high )
+                elseif ( #whom.item.zone > 1 )
+                then
+                    local t1, t2 = whom.splitList( whom.item.zone );
+                    whom.queueSearch( whom.item.guild, whom.item.career, t1, whom.item.low, whom.item.high )
+                    whom.queueSearch( whom.item.guild, whom.item.career, t2, whom.item.low, whom.item.high )
                 else
-                    if ( whom.here == true )
-                    then
-                        whom.record_overflow()
-                        whom.tally(data)
-                    elseif ( whom.item.zone[1] == -1 )
-                    then
-                        local zids = GetZoneIDList()
-                        local t1, t2 = whom.splitList( GetZoneIDList() )
-                        whom.queueSearch( whom.item.career, t1, whom.item.low, whom.item.high )
-                        whom.queueSearch( whom.item.career, t2, whom.item.low, whom.item.high )
-                    else
-                        if ( #whom.item.zone == 1 )
-                        then
-                            whom.record_overflow()
-                            whom.tally(data)
-                        else
-                            local t1, t2 = whom.splitList( whom.item.zone );
-                            whom.queueSearch( whom.item.career, t1, whom.item.low, whom.item.high )
-                            whom.queueSearch( whom.item.career, t2, whom.item.low, whom.item.high )
-                        end
-                    end
+                    whom.record_overflow()
+                    whom.tally(data)
                 end
             end
         end
@@ -232,13 +337,31 @@ function whom.onSearchUpdated()
             if ( GameData.Player.realm == GameData.Realm.DESTRUCTION ) then
                 career = whom.careers[1]
             end
-            whom.queueSearch( career, {-1}, 1, 1 )
+            whom.queueSearch( L"", career, {-1}, 1, 1 )
             whom.search()
         end
     end
 end
 
+
+
 function whom.displayResults()
+    local names = whom.keys(whom.players)
+    table.sort( names, function(a,b)
+            for i, f in ipairs(whom.sort_order) do
+                if ( whom.players[a][f] < whom.players[b][f] ) then return true
+                elseif ( whom.players[a][f] > whom.players[b][f] ) then return false end
+            end
+            return a < b
+        end)
+    for i, name in ipairs (names) do
+        local data = whom.players[name]
+        if ( data[3] ~= L"" ) then
+            name = name .. L" <" .. data[3] .. L">"
+        end
+        whom.p(i, ": ", name, ", ", data[1], " ", data[2], " in ", data[4])
+    end
+
     local zones = whom.keys(whom.zones)
     table.sort(zones, function(a,b) return whom.zones[a][5] < whom.zones[b][5] end)
     for i, zid in ipairs(zones) do
@@ -251,7 +374,7 @@ function whom.displayResults()
                 out = out .. L" " .. whom.zones[zid][i] .. L" " .. label[i]
                 more = more - whom.zones[zid][i]
                 if ( more > 0 ) then out = out .. L"," end
-            end 
+            end
         end
         out = out .. L" / "
         label = {L"T1", L"T2", L"T3", L"T4", L"R40"}
@@ -259,9 +382,9 @@ function whom.displayResults()
         for i = 5, 1, -1 do
            if ( whom.zones[zid][5+i] > 0 ) then
                out = out .. L" " .. whom.zones[zid][5+i] .. L" " .. label[i]
-               more = more - whom.zones[zid][5+i] 
+               more = more - whom.zones[zid][5+i]
                if ( more > 0 ) then out = out .. L"," end
-           end 
+           end
         end
         whom.p(out)
     end
@@ -303,7 +426,7 @@ function whom.p(...)
     end
     EA_ChatWindow.Print(out, ChatSettings.Channels[SystemData.ChatLogFilters.SAY].id)
 end
-    
+
 function whom.keys(t)
     local k = {}
     for key, value in pairs(t) do
@@ -329,7 +452,7 @@ function whom.rankToTier(rank)
     if ( rank == 40 ) then      return 5
     elseif ( rank >= 32 ) then  return 4
     elseif ( rank >= 22 ) then  return 3
-    elseif ( rank >= 12 ) then  return 2 
+    elseif ( rank >= 12 ) then  return 2
     else return 1 end
 end
 
