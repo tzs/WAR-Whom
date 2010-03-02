@@ -1,8 +1,12 @@
 ========================================================================
-v2.1
+v2.2
     "/whom sc" will now only count and show players in your tier.
     Before, it would count players of all ranks.
 
     It is now a bit faster on searches that are going to find a
     lot of players.
+
+    "/whom trinity" will show members of the Gaiscioch guilds.
+    This was actually in v2.0, but I didn't document it. This is
+    probably only interesting to people playing Order on Badlands.
 ========================================================================
