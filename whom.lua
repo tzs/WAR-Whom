@@ -69,6 +69,7 @@ function whom.onSlashCmd(args)
     local did_t2 = false
     local did_t3 = false
     local did_t4 = false
+    local want_sc = false
     
     -- letters still available for options:
     -- b e f h i j k m n o p q s t u v x y
@@ -106,6 +107,7 @@ function whom.onSlashCmd(args)
         elseif ( arg == "here" ) then
             zones = {GameData.Player.zone}
         elseif ( arg == "sc" ) then
+            want_sc = true
             zones = {}
             for i, data in ipairs (GameData.ScenarioQueueData) do
                 if ( data.id ~= 0 ) then
@@ -200,7 +202,15 @@ function whom.onSlashCmd(args)
         table.insert(ranges, {40, 40})
     end
     if ( ranges[1] == nil) then
-        ranges = {{1,40}}
+        if ( want_sc == true ) then
+            local level = GameData.Player.level
+            if ( level < 12 ) then ranges = {{1,11}}
+            elseif ( level < 22 ) then ranges = {{12,21}}
+            elseif ( level < 32 ) then ranges = {{22,31}}
+            else ranges = {{32,40}} end
+        else
+            ranges = {{1,40}}
+        end
     end
     
     for i, g in ipairs (guilds) do
