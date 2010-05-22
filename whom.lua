@@ -498,7 +498,10 @@ function whom.p(...)
             out = out .. towstring(""..part)
         end
     end
-    EA_ChatWindow.Print(out, ChatSettings.Channels[SystemData.ChatLogFilters.SAY].id)
+    --output to the SYSTEM GENERAL channel, which is where /who goes
+    --in 1.3.5. There doesn't seem to be a name for this in SystemData.ChatLogFilters
+    --which is why I'm using the absolute number, 2000
+    EA_ChatWindow.Print(out, ChatSettings.Channels[2000].id)
 end
 
 function whom.dp(...)

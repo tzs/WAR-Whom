@@ -1,4 +1,8 @@
 ========================================================================
+v2.3
+    Output goes to the "System General" channel now instead of the "Say"
+    channel, to match 1.3.5's move of /who output to there.
+========================================================================
 v2.2
     "/whom sc" will now only count and show players in your tier.
     Before, it would count players of all ranks.
