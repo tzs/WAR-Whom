@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ModuleFile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <UiMod name="whom" version="2.3" date="05/21/2010" >
+    <UiMod name="whom" version="2.4" date="05/26/2010" >
         
         <Author name="tzs"/>
         <Description text="count classes and archetypes and list players"/>

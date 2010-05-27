@@ -218,7 +218,10 @@ function whom.onSlashCmd(args)
         do
             if ( zones[1] == -1 and whom.mode == 1 )
             then
-                local t1, t2 = whom.splitList( GetZoneIDList() )
+                local all_zones = GetZoneIDList()
+                --GetZoneIDList omits 191, the Necropolis, so we have to add it ourselves
+                whom.append_if_missing(all_zones,191)
+                local t1, t2 = whom.splitList( all_zones )
                 whom.queueSearch( g, L"", t1, r[1], r[2])
                 whom.queueSearch( g, L"", t2, r[1], r[2])
             else
@@ -522,6 +525,15 @@ function whom.keys(t)
         table.insert(k, key)
     end
     return k
+end
+
+function whom.append_if_missing(t,id)
+   for i, v in ipairs(t) do
+       if ( v == id ) then
+           return
+       end
+   end
+   table.insert(t,id)
 end
 
 function whom.splitList(t)

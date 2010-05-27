@@ -1,3 +1,7 @@
+v2.4
+    The game function to get the list of all zones omits the Necropolis,
+    which caused whom to overlook people in that zone. Whom now
+    explicitly adds Necropolis to the zone list. 
 ========================================================================
 v2.3
     Output goes to the "System General" channel now instead of the "Say"
