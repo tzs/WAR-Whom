@@ -222,10 +222,10 @@ function whom.onSlashCmd(args)
                 --GetZoneIDList omits 191, the Necropolis, so we have to add it ourselves
                 whom.append_if_missing(all_zones,191)
                 local t1, t2 = whom.splitList( all_zones )
-                whom.queueSearch( g, L"", t1, r[1], r[2])
-                whom.queueSearch( g, L"", t2, r[1], r[2])
+                whom.queueSearch( g, L"", t1, r[1], r[2], L"")
+                whom.queueSearch( g, L"", t2, r[1], r[2], L"")
             else
-                whom.queueSearch( g, L"", zones, r[1], r[2])
+                whom.queueSearch( g, L"", zones, r[1], r[2], L"")
             end
         end
     end
@@ -247,11 +247,11 @@ function whom.search()
         -- player name, guild name, career name, zone ID array, low rank, high rank, advisor-only flag
         -- names are L"" for wildcard, zone ID array of {-1} for all zones
         
-        SendPlayerSearchRequest( L"", whom.item.guild, whom.item.career, whom.item.zone, whom.item.low, whom.item.high, whom.advisor )
+        SendPlayerSearchRequest( whom.item.name, whom.item.guild, whom.item.career, whom.item.zone, whom.item.low, whom.item.high, whom.advisor )
     end
 end
 
-function whom.queueSearch(guild, career, zone, low, high)
+function whom.queueSearch(guild, career, zone, low, high, name)
     local item = {}
     item.next = nil
     item.guild = guild
@@ -259,6 +259,7 @@ function whom.queueSearch(guild, career, zone, low, high)
     item.zone = zone
     item.low = low
     item.high = high
+    item.name = name
     if ( whom.head == nil ) then
         whom.head = item
     else
@@ -268,13 +269,13 @@ function whom.queueSearch(guild, career, zone, low, high)
 end
 
 
-function whom.queueCareerSearch( guild, zones, low, high)
+function whom.queueCareerSearch( guild, zones, low, high, name )
     local offset = 0
     if ( GameData.Player.realm == GameData.Realm.DESTRUCTION ) then
         offset = 12
     end
     for i = 1, 12 do
-        whom.queueSearch( guild, whom.careers[i+offset], zones, low, high )
+        whom.queueSearch( guild, whom.careers[i+offset], zones, low, high, name )
     end
 end   
 
@@ -346,7 +347,7 @@ function whom.onSearchUpdated()
             local count = #data
             if ( count >= 30 ) then count = "overflow" end
             whom.dp("got ", count, " guild=", whom.item.guild, " career=", whom.item.career, " #zones=", zone_count, " ranks [",
-                whom.item.low, ",", whom.item.high, "] advisor_only=", advisor_only)
+                whom.item.low, ",", whom.item.high, "] advisor_only=", advisor_only, " name=", whom.item.name)
 
             if ( #data < 30 ) then
                 -- whom.p(#data," found for [",whom.item.career,"], ranks ",whom.item.low,"-",whom.item.high,". zone list:",#whom.item.zone," zones starting with ",GetZoneName(whom.item.zone[1]))
@@ -355,25 +356,28 @@ function whom.onSearchUpdated()
                 -- whom.p("Overflow for [",whom.item.career,"], ranks ",whom.item.low,"-",whom.item.high,". zone list:",#whom.item.zone," zones starting with ",GetZoneName(whom.item.zone[1]))
                 if ( whom.item.career == L"" )
                 then
-                    whom.queueCareerSearch( whom.item.guild, whom.item.zone, whom.item.low, whom.item.high )
+                    whom.queueCareerSearch( whom.item.guild, whom.item.zone, whom.item.low, whom.item.high, whom.item.name )
                 elseif ( whom.item.low ~= whom.item.high )
                 then
                     local mid = math.floor((whom.item.low + whom.item.high) / 2)
-                    whom.queueSearch( whom.item.guild, whom.item.career, whom.item.zone, whom.item.low, mid )
-                    whom.queueSearch( whom.item.guild, whom.item.career, whom.item.zone, mid+1, whom.item.high )
+                    whom.queueSearch( whom.item.guild, whom.item.career, whom.item.zone, whom.item.low, mid, whom.item.name )
+                    whom.queueSearch( whom.item.guild, whom.item.career, whom.item.zone, mid+1, whom.item.high, whom.item.name )
                 elseif ( whom.item.zone[1] == -1 )
                 then
                     local t1, t2 = whom.splitList( GetZoneIDList() )
-                    whom.queueSearch( whom.item.guild, whom.item.career, t1, whom.item.low, whom.item.high )
-                    whom.queueSearch( whom.item.guild, whom.item.career, t2, whom.item.low, whom.item.high )
+                    whom.queueSearch( whom.item.guild, whom.item.career, t1, whom.item.low, whom.item.high, whom.item.name )
+                    whom.queueSearch( whom.item.guild, whom.item.career, t2, whom.item.low, whom.item.high, whom.item.name )
                 elseif ( #whom.item.zone > 1 )
                 then
                     local t1, t2 = whom.splitList( whom.item.zone );
-                    whom.queueSearch( whom.item.guild, whom.item.career, t1, whom.item.low, whom.item.high )
-                    whom.queueSearch( whom.item.guild, whom.item.career, t2, whom.item.low, whom.item.high )
+                    whom.queueSearch( whom.item.guild, whom.item.career, t1, whom.item.low, whom.item.high, whom.item.name )
+                    whom.queueSearch( whom.item.guild, whom.item.career, t2, whom.item.low, whom.item.high, whom.item.name )
                 else
-                    whom.record_overflow()
-                    whom.tally(data)
+                    local letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                    for i = 1, 26 do
+                        local name = whom.item.name .. towstring(string.sub(letters,i,i))
+                        whom.queueSearch( whom.item.guild, whom.item.career, whom.item.zone, whom.item.low, whom.item.high, name )
+                    end
                 end
             end
         end
@@ -385,7 +389,7 @@ function whom.onSearchUpdated()
             if ( GameData.Player.realm == GameData.Realm.DESTRUCTION ) then
                 career = whom.careers[1]
             end
-            whom.queueSearch( L"", career, {-1}, 1, 1 )
+            whom.queueSearch( L"", career, {-1}, 1, 1, L"" )
             whom.search()
         end
     end
@@ -489,7 +493,7 @@ function whom.displayResults()
     for i, m in pairs(whom.overflow) do
         whom.p(m)
     end
-    whom.dp("probe count = ", whom.probe_count)
+    whom.dp("probe count = ", whom.probe_count, ", yield per probe = ", whom.count / whom.probe_count)
 end
 
 function whom.p(...)
@@ -497,6 +501,9 @@ function whom.p(...)
     for i, part in ipairs(arg) do
         if ( type(part) == "wstring" ) then
             out = out .. part
+        elseif ( type(part) == "boolean" ) then
+            if ( part == true ) then out = out .. L"true"
+            else out = out .. L"false" end
         else
             out = out .. towstring(""..part)
         end
@@ -512,6 +519,9 @@ function whom.dp(...)
     for i, part in ipairs(arg) do
         if ( type(part) == "wstring" ) then
             out = out .. part
+        elseif ( type(part) == "boolean" ) then
+            if ( part == true ) then out = out .. L"true"
+            else out = out .. L"false" end
         else
             out = out .. towstring(""..part)
         end
