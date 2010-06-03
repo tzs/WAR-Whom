@@ -1,3 +1,8 @@
+v2.5.1
+    Will now handle the case of 30+ characters of the same level
+    and class in the same zone, by searching by name if necessary
+    to avoid overflow
+========================================================================
 v2.4
     The game function to get the list of all zones omits the Necropolis,
     which caused whom to overlook people in that zone. Whom now
