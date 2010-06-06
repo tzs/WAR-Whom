@@ -11,25 +11,26 @@ function whom.initialize()
     whom.reset()
     whom.mode = 1
     whom.careers = {
-        -- Tank
-        L"Ironbreaker", L"Swordmaster", L"Knight of the Blazing Sun",
-        -- MDPS
-        L"Slayer", L"Witch Hunter", L"White Lion",
-        -- RDPS
-        L"Engineer", L"Bright Wizard", L"Shadow Warrior",
-        -- Healer
-        L"Warrior Priest", L"Archmage", L"Runepriest",
-        -- Tank
-        L"Black Orc", L"Chosen", L"Blackguard",
-        -- MDPS
-        L"Witch Elf", L"Choppa", L"Marauder",
-        -- RDPS
-        L"Squig Herder", L"Magus", L"Sorcerer",
-        -- Healer
-        L"Shaman", L"Zealot", L"Disciple of Khaine",
-        -- Female Sorcerer (player is, of course, actually male)
-        L"Sorceress"
+        --order careers, tanks first, then mdps, then rdps, then healers
+        GameDefs.CAREERID_IRON_BREAKER, GameDefs.CAREERID_SWORDMASTER, GameDefs.CAREERID_KNIGHT,
+        GameDefs.CAREERID_SLAYER, GameDefs.CAREERID_WITCH_HUNTER, GameDefs.CAREERID_SEER,
+        GameDefs.CAREERID_ENGINEER, GameDefs.CAREERID_BRIGHT_WIZARD, GameDefs.CAREERID_SHADOW_WARRIOR,
+        GameDefs.CAREERID_WARRIOR_PRIEST, GameDefs.CAREERID_ARCHMAGE, GameDefs.CAREERID_RUNE_PRIEST,
+        --destruction careers, same order as order careers
+        GameDefs.CAREERID_BLACKORC, GameDefs.CAREERID_CHOSEN, GameDefs.CAREERID_SHADE,
+        GameDefs.CAREERID_ASSASSIN, GameDefs.CAREERID_CHOPPA, GameDefs.CAREERID_WARRIOR,
+        GameDefs.CAREERID_SQUIG_HERDER, GameDefs.CAREERID_MAGUS, GameDefs.CAREERID_SORCERER,
+        GameDefs.CAREERID_SHAMAN, GameDefs.CAREERID_ZEALOT, GameDefs.CAREERID_BLOOD_PRIEST
     }
+    whom.num_careers = #whom.careers
+    whom.tank_end = 3   --index of last order tank in whom.careers
+    whom.mdps_end = 6
+    whom.rdps_end = 9
+    whom.healer_end = 12
+    for i=1,whom.num_careers do
+        whom.careers[i+whom.num_careers] = GetStringFromTable("CareerLinesFemale", whom.careers[i])
+        whom.careers[i] = GetStringFromTable("CareerLinesMale", whom.careers[i])
+    end
     LibSlash.RegisterWSlashCmd("whom", function(args) whom.onSlashCmd(args) end)
     whom.p("Whom available. Type /whom for population report")
 end
@@ -272,9 +273,9 @@ end
 function whom.queueCareerSearch( guild, zones, low, high, name )
     local offset = 0
     if ( GameData.Player.realm == GameData.Realm.DESTRUCTION ) then
-        offset = 12
+        offset = whom.num_careers/2
     end
-    for i = 1, 12 do
+    for i = 1, whom.num_careers/2 do
         whom.queueSearch( guild, whom.careers[i+offset], zones, low, high, name )
     end
 end   
@@ -385,7 +386,7 @@ function whom.onSearchUpdated()
             whom.search()
         else
             whom.finishing = true
-            local career = whom.careers[13]
+            local career = whom.careers[whom.num_careers/2 + 1]
             if ( GameData.Player.realm == GameData.Realm.DESTRUCTION ) then
                 career = whom.careers[1]
             end
@@ -569,23 +570,23 @@ end
 
 function whom.careerNameToClassIndex(career)
     local classindex = 0
-    for i = 1, 25 do
+    for i = 1, 2*whom.num_careers do
         if ( WStringsCompareIgnoreGrammer(career, whom.careers[i]) == 0 ) then
             classindex = i
             break
         end
     end
-    if ( classindex == 25 ) then classindex = 21 end
+    if ( classindex > whom.num_careers ) then classindex = classindex - whom.num_careers end
     return classindex
 end
 
 function whom.classIndexToArchtypeIndex(classindex)
-    if ( classindex > 12 ) then classindex = classindex - 12 end
-    if ( classindex <= 3 ) then
+    if ( classindex > whom.num_careers/2 ) then classindex = classindex - whom.num_careers/2 end
+    if ( classindex <= whom.tank_end ) then
         return 1
-    elseif ( classindex <= 6 ) then
+    elseif ( classindex <= whom.mdps_end ) then
         return 2
-    elseif ( classindex <= 9 ) then
+    elseif ( classindex <= whom.rdps_end ) then
         return 3
     else
         return 4

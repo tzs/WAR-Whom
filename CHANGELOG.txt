@@ -1,3 +1,10 @@
+v2.6
+    Names for careers are now obtained from one of the game's data
+    tables, instead of being hard coded. I think this *should* make
+    it so /whom can recognize career archetypes correctly in
+    non-English versions of the game. I have not been able to
+    test this, however.
+========================================================================
 v2.5.1
     Will now handle the case of 30+ characters of the same level
     and class in the same zone, by searching by name if necessary
