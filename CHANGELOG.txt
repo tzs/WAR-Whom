@@ -1,3 +1,22 @@
+v2.8
+    Tiers changed to match the new level ranges in 1.4:
+        tier 1       1 - 15
+        tier 2      16 - 26
+        tier 3      27 - 39
+        tier 4      40
+
+    New options to list zones that are part of the RvR campaign:
+        r1      Shows the tier 1 zones
+        r2      Shows the tier 2 zones
+        r3      Shows the tier 3 zones
+        r4      Shows the tier 4 zones
+    For example, r4 would show Reikland, Praag, and Chaos wastes
+    from Empire/Chaos lands, Eataine, Dragonwake, and Caledor from
+    the Elf lands, and Kadrin Valley, Thunder Mountain, and Black Crag
+    from the Dwarf/Greenskin lands. Note the old fortress zones are not
+    included.
+
+========================================================================
 v2.7
     Fix to work with game version 1.4 as is currently on the test
     server. This version also works with 1.3.6 on the live server.

@@ -10,34 +10,18 @@ function whom.initialize()
     whom.registered = false
     whom.reset()
     whom.mode = 1
-    if ( GameData.CareerLine.WITCH_ELF ~= nil ) then
-        -- Game version 1.4 on the test server
-        whom.careers = {
-            --order careers, tanks first, then mdps, then rdps, then healers
-            GameData.CareerLine.IRON_BREAKER, GameData.CareerLine.KNIGHT, GameData.CareerLine.SWORDMASTER,
-            GameData.CareerLine.SLAYER, GameData.CareerLine.WITCH_HUNTER, GameData.CareerLine.WHITE_LION,
-            GameData.CareerLine.ENGINEER, GameData.CareerLine.BRIGHT_WIZARD, GameData.CareerLine.SHADOW_WARRIOR,
-            GameData.CareerLine.RUNE_PRIEST, GameData.CareerLine.WARRIOR_PRIEST, GameData.CareerLine.ARCHMAGE,
-            --destruction careers, same order as order careers
-            GameData.CareerLine.BLACK_ORC, GameData.CareerLine.CHOSEN, GameData.CareerLine.BLACKGUARD,
-            GameData.CareerLine.CHOPPA, GameData.CareerLine.MARAUDER, GameData.CareerLine.WITCH_ELF,
-            GameData.CareerLine.SQUIG_HERDER, GameData.CareerLine.MAGUS, GameData.CareerLine.SORCERER,
-            GameData.CareerLine.SHAMAN, GameData.CareerLine.DISCIPLE, GameData.CareerLine.ZEALOT
-        }
-    else
-        whom.careers = {
-            --order careers, tanks first, then mdps, then rdps, then healers
-            GameDefs.CAREERID_IRON_BREAKER, GameDefs.CAREERID_SWORDMASTER, GameDefs.CAREERID_KNIGHT,
-            GameDefs.CAREERID_SLAYER, GameDefs.CAREERID_WITCH_HUNTER, GameDefs.CAREERID_SEER,
-            GameDefs.CAREERID_ENGINEER, GameDefs.CAREERID_BRIGHT_WIZARD, GameDefs.CAREERID_SHADOW_WARRIOR,
-            GameDefs.CAREERID_WARRIOR_PRIEST, GameDefs.CAREERID_ARCHMAGE, GameDefs.CAREERID_RUNE_PRIEST,
-            --destruction careers, same order as order careers
-            GameDefs.CAREERID_BLACKORC, GameDefs.CAREERID_CHOSEN, GameDefs.CAREERID_SHADE,
-            GameDefs.CAREERID_ASSASSIN, GameDefs.CAREERID_CHOPPA, GameDefs.CAREERID_WARRIOR,
-            GameDefs.CAREERID_SQUIG_HERDER, GameDefs.CAREERID_MAGUS, GameDefs.CAREERID_SORCERER,
-            GameDefs.CAREERID_SHAMAN, GameDefs.CAREERID_ZEALOT, GameDefs.CAREERID_BLOOD_PRIEST
-        }
-    end
+    whom.careers = {
+        --order careers, tanks first, then mdps, then rdps, then healers
+        GameData.CareerLine.IRON_BREAKER, GameData.CareerLine.KNIGHT, GameData.CareerLine.SWORDMASTER,
+        GameData.CareerLine.SLAYER, GameData.CareerLine.WITCH_HUNTER, GameData.CareerLine.WHITE_LION,
+        GameData.CareerLine.ENGINEER, GameData.CareerLine.BRIGHT_WIZARD, GameData.CareerLine.SHADOW_WARRIOR,
+        GameData.CareerLine.RUNE_PRIEST, GameData.CareerLine.WARRIOR_PRIEST, GameData.CareerLine.ARCHMAGE,
+        --destruction careers, same order as order careers
+        GameData.CareerLine.BLACK_ORC, GameData.CareerLine.CHOSEN, GameData.CareerLine.BLACKGUARD,
+        GameData.CareerLine.CHOPPA, GameData.CareerLine.MARAUDER, GameData.CareerLine.WITCH_ELF,
+        GameData.CareerLine.SQUIG_HERDER, GameData.CareerLine.MAGUS, GameData.CareerLine.SORCERER,
+        GameData.CareerLine.SHAMAN, GameData.CareerLine.DISCIPLE, GameData.CareerLine.ZEALOT
+    }
 
     whom.num_careers = #whom.careers
     whom.tank_end = 3   --index of last order tank in whom.careers
@@ -48,6 +32,12 @@ function whom.initialize()
         whom.careers[i+whom.num_careers] = GetStringFromTable("CareerLinesFemale", whom.careers[i])
         whom.careers[i] = GetStringFromTable("CareerLinesMale", whom.careers[i])
     end
+    whom.rvrzones = {
+        {1, 6, 100, 106, 200, 206},
+        {1, 7, 101, 107, 201, 207},
+        {2, 8, 102, 108, 202, 208},
+        {5, 9, 36, 103, 105, 109, 203, 205, 209}
+    }
     LibSlash.RegisterWSlashCmd("whom", function(args) whom.onSlashCmd(args) end)
     whom.p("Whom available. Type /whom for population report")
 end
@@ -55,8 +45,8 @@ end
 function whom.reset()
     whom.running = false
     whom.finishing = false
-    whom.tcount = { {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}}
-    whom.tdetails = { {}, {}, {}, {}, {} }
+    whom.tcount = { {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0} }
+    whom.tdetails = { {}, {}, {}, {} }
     whom.zones = {}
     whom.count = 0
     whom.overflow = {}
@@ -78,17 +68,16 @@ function whom.onSlashCmd(args)
         whom.p("whom: stopped")
         return
     end
-    
+
     local guilds = {}
-    local zones = {}
+    local zlist = {}
     local ranges = {}
-    local want40 = false
     local did_t1 = false
     local did_t2 = false
     local did_t3 = false
     local did_t4 = false
     local want_sc = false
-    
+
     -- letters still available for options:
     -- b e f h i j k m n o p q s t u v x y
     for i, arg in ipairs(whom.words(WStringToString(args))) do
@@ -109,30 +98,36 @@ function whom.onSlashCmd(args)
         elseif ( arg == "-a" ) then
             table.insert(whom.sort_order, 5)
         elseif ( arg == "t1" and did_t1 == false ) then
-            table.insert(ranges, {1,11})
+            table.insert(ranges, {1,15})
             did_t1 = true
         elseif ( arg == "t2" and did_t2 == false ) then
-            table.insert(ranges, {12,21})
+            table.insert(ranges, {16,26})
             did_t2 = true
         elseif ( arg == "t3" and did_t3 == false ) then
-            table.insert(ranges, {22,31})
+            table.insert(ranges, {27,39})
             did_t3 = true
         elseif ( arg == "t4" and did_t4 == false ) then
-            table.insert(ranges, {32,40});
+            table.insert(ranges, {40,40});
             did_t4 = true
-        elseif ( arg == "40" ) then
-            want40 = true
+        elseif ( arg == "r1" ) then
+            whom.addToSet(zlist, whom.rvrzones[1])
+        elseif ( arg == "r2" ) then
+            whom.addToSet(zlist, whom.rvrzones[2])
+        elseif ( arg == "r3" ) then
+            whom.addToSet(zlist, whom.rvrzones[3])
+        elseif ( arg == "r4" ) then
+            whom.addToSet(zlist, whom.rvrzones[4])
         elseif ( arg == "here" ) then
-            zones = {GameData.Player.zone}
+            zlist[GameData.Player.zone] = 1
         elseif ( arg == "sc" ) then
-            want_sc = true
-            zones = {}
+            want_sc = false
             for i, data in ipairs (GameData.ScenarioQueueData) do
                 if ( data.id ~= 0 ) then
-                    table.insert(zones, data.zone)
+                    want_sc = true
+                    zlist[data.zone] = 1
                 end
             end
-            if ( zones[1] == nil ) then
+            if ( want_sc == false ) then
                 whom.p("No scenarios are available to you at this time and location.")
                 return
             end
@@ -154,17 +149,21 @@ function whom.onSlashCmd(args)
         elseif ( arg == "advisor" ) then
             whom.advisor = true
         elseif ( arg == "trinity" ) then
-            guilds = {L"gaiscioch", L"gaiscioch na nuada", L"gaiscioch na anu"}
+            guilds = {L"gaiscioch", L"gaiscioch na nuada", L"gaiscioch na anu", L"gaiscioch na sigmar"}
         elseif ( arg == "help" ) then
             whom.p("Usage: /whom [options]")
             whom.p("  If you give no options, default is to list all visible players")
             whom.p("  If you specify one or more of the five following options, then")
             whom.p("    only people of the given ranks will be included:")
-            whom.p("     t1     show ranks 1-11")
-            whom.p("     t2     show ranks 12-21")
-            whom.p("     t3     show ranks 22-31")
-            whom.p("     t4     show ranks 32-40")
-            whom.p("     40     show rank 40")
+            whom.p("     t1     show ranks 1-15")
+            whom.p("     t2     show ranks 16-26")
+            whom.p("     t3     show ranks 27-39")
+            whom.p("     t4     show ranks 40")
+            whom.p("  These options limit the search to the specified zones:")
+            whom.p("     r1     tier 1 zones that contain RvR lakes")
+            whom.p("     r2     tier 2 zones that conains RvR lakes")
+            whom.p("     r3     tier 3 zones that conains RvR lakes")
+            whom.p("     r4     tier 4 zones that conains RvR lakes")
             whom.p("  You can limit the search to your guild or your alliance with one of:")
             whom.p("     guild")
             whom.p("     alliance")
@@ -176,7 +175,6 @@ function whom.onSlashCmd(args)
             whom.p("     advisor")
             whom.p("  You can ask for a detailed class breakdown by tier with:")
             whom.p("     -d")
-            whom.p("  NOTE: in prior releases of /whom, this was -c.")
             whom.p("  You can specify the sort order of the player list with:")
             whom.p("     -c    sort by career")
             whom.p("     -a    sort by archetype")
@@ -189,9 +187,9 @@ function whom.onSlashCmd(args)
             whom.p("    sort by rank within each career group, and then finally by")
             whom.p("    name when more than one person has the same career/rank")
             whom.p("  Here is an example:")
-            whom.p("    /whom -g -a alliance sc 40")
-            whom.p("  That would show you rank 40 people in your allliance who are")
-            whom.p("    currently in a scenario available to you, sorted by guild")
+            whom.p("    /whom -g -a alliance sc")
+            whom.p("  That would show you people in your allliance who are")
+            whom.p("    currently in scenarios available to you, sorted by guild")
             whom.p("    and archetype.")
             whom.p("  By default, whom prints a player list, a locations list, and")
             whom.p("    statstics on archetypes and tiers. This can be changed:")
@@ -205,32 +203,30 @@ function whom.onSlashCmd(args)
             return
         end
     end
-    
+
     --table.insert(whom.sort_order, 1)
-    
+
     if ( guilds[1] == nil ) then
         guilds = {L""}
     end
-    
+
+    local zones = whom.keys(zlist)
     if ( zones[1] == nil ) then
         zones = {-1}
     end
-    
-    if ( want40 == true  and did_t4 == false ) then
-        table.insert(ranges, {40, 40})
-    end
+
     if ( ranges[1] == nil) then
         if ( want_sc == true ) then
             local level = GameData.Player.level
-            if ( level < 12 ) then ranges = {{1,11}}
-            elseif ( level < 22 ) then ranges = {{12,21}}
-            elseif ( level < 32 ) then ranges = {{22,31}}
-            else ranges = {{32,40}} end
+            if ( level < 16 ) then ranges = {{1,15}}
+            elseif ( level < 27 ) then ranges = {{16,26}}
+            elseif ( level < 40 ) then ranges = {{27,39}}
+            else ranges = {{40,40}} end
         else
             ranges = {{1,40}}
         end
     end
-    
+
     for i, g in ipairs (guilds) do
         for j, r in ipairs (ranges)
         do
@@ -252,7 +248,7 @@ function whom.onSlashCmd(args)
         RegisterEventHandler( SystemData.Events.SOCIAL_SEARCH_UPDATED, "whom.onSearchUpdated" )
         whom.registered = true
     end
-    
+
     whom.running = true
     whom.dp("/whom beginning search")
     whom.search()
@@ -264,7 +260,7 @@ function whom.search()
         whom.head = whom.item.next
         -- player name, guild name, career name, zone ID array, low rank, high rank, advisor-only flag
         -- names are L"" for wildcard, zone ID array of {-1} for all zones
-        
+
         SendPlayerSearchRequest( whom.item.name, whom.item.guild, whom.item.career, whom.item.zone, whom.item.low, whom.item.high, whom.advisor )
     end
 end
@@ -295,7 +291,7 @@ function whom.queueCareerSearch( guild, zones, low, high, name )
     for i = 1, whom.num_careers/2 do
         whom.queueSearch( guild, whom.careers[i+offset], zones, low, high, name )
     end
-end   
+end
 
 function whom.record_overflow()
     local level = L"" .. whom.item.low
@@ -310,7 +306,7 @@ end
 function whom.tally(data)
     for key, value in ipairs( data ) do
         if ( whom.players[value.name] ~= nil ) then return end
-        
+
         whom.count = whom.count + 1
 
         local tier = whom.rankToTier( value.rank )
@@ -325,15 +321,15 @@ function whom.tally(data)
         whom.players[value.name] = {value.rank, value.career, value.guildName, zone, archtypeIndex}
 
         whom.tcount[tier][archtypeIndex] = whom.tcount[tier][archtypeIndex] + 1
-        whom.tcount[tier][5] = whom.tcount[tier][5] + 1        
-    
+        whom.tcount[tier][5] = whom.tcount[tier][5] + 1
+
         if ( whom.zones[value.zoneID] == nil ) then
             whom.zones[value.zoneID] = {0,0,0,0,0,0,0,0,0,0}
         end
         whom.zones[value.zoneID][archtypeIndex] = whom.zones[value.zoneID][archtypeIndex] + 1
         whom.zones[value.zoneID][5] = whom.zones[value.zoneID][5] + 1
         whom.zones[value.zoneID][5+tier] = whom.zones[value.zoneID][5+tier] + 1
-    
+
         if ( whom.tdetails[tier][classIndex] == nil ) then
             whom.tdetails[tier][classIndex] = 0
         end
@@ -420,7 +416,7 @@ function whom.displayResults()
     local show_stats = true;
     local show_who = true;
     local show_locations = true;
-    
+
     if ( whom.who_no_stats == true or whom.locations_no_stats == true ) then
         show_stats = false
         show_who = false
@@ -432,7 +428,7 @@ function whom.displayResults()
     if ( whom.locations_no_stats == true )then
         show_locations = true
     end
-    
+
     if ( show_who == true ) then
         local names = whom.keys(whom.players)
         table.sort( names, function(a,b)
@@ -468,17 +464,17 @@ function whom.displayResults()
                     out = out .. L" " .. whom.zones[zid][i] .. L" " .. label[i]
                     more = more - whom.zones[zid][i]
                     if ( more > 0 ) then out = out .. L"," end
-                end 
+                end
             end
             out = out .. L" / "
             label = {L"T1", L"T2", L"T3", L"T4", L"R40"}
             more = whom.zones[zid][5]
-            for i = 5, 1, -1 do
+            for i = 4, 1, -1 do
                if ( whom.zones[zid][5+i] > 0 ) then
                    out = out .. L" " .. whom.zones[zid][5+i] .. L" " .. label[i]
-                   more = more - whom.zones[zid][5+i] 
+                   more = more - whom.zones[zid][5+i]
                    if ( more > 0 ) then out = out .. L"," end
-               end 
+               end
             end
             whom.p(out)
         end
@@ -487,27 +483,28 @@ function whom.displayResults()
     if ( show_stats == true ) then
         whom.p("**** Total players found: ", whom.count, " ****")
 
-        for tier = 1, 5 do
+        for tier = 1, 4 do
             local tname = "Tier "..tier
-            if ( tier == 5 ) then tname = "R40" end
-            whom.p( tname, ": ",
-                    whom.tcount[tier][5], " players. ",
-                    whom.tcount[tier][1], " tank, ",
-                    whom.tcount[tier][2], " mdps, ",
-                    whom.tcount[tier][3], " rdps, ",
-                    whom.tcount[tier][4], " healer")
-            if ( whom.details ) then
-                local tierdata = whom.tdetails[tier]
-                local classes = whom.keys(tierdata)
-                table.sort(classes)
-                for i, classIndex in pairs(classes) do
-                    local count = tierdata[classIndex]
-                    whom.p("  ", count, " ", whom.careers[classIndex])
+            if ( whom.tcount[tier][5] > 0 ) then
+                whom.p( tname, ": ",
+                        whom.tcount[tier][5], " players. ",
+                        whom.tcount[tier][1], " tank, ",
+                        whom.tcount[tier][2], " mdps, ",
+                        whom.tcount[tier][3], " rdps, ",
+                        whom.tcount[tier][4], " healer")
+                if ( whom.details ) then
+                    local tierdata = whom.tdetails[tier]
+                    local classes = whom.keys(tierdata)
+                    table.sort(classes)
+                    for i, classIndex in pairs(classes) do
+                        local count = tierdata[classIndex]
+                        whom.p("  ", count, " ", whom.careers[classIndex])
+                    end
                 end
             end
         end
     end
-    
+
     for i, m in pairs(whom.overflow) do
         whom.p(m)
     end
@@ -546,7 +543,7 @@ function whom.dp(...)
     end
     d(out)
 end
-    
+
 function whom.keys(t)
     local k = {}
     for key, value in pairs(t) do
@@ -555,13 +552,19 @@ function whom.keys(t)
     return k
 end
 
+function whom.addToSet(set, list)
+    for i, item in ipairs (list) do
+        set[item] = 1
+    end
+end
+
 function whom.append_if_missing(t,id)
-   for i, v in ipairs(t) do
-       if ( v == id ) then
-           return
-       end
-   end
-   table.insert(t,id)
+    for i, v in ipairs(t) do
+        if ( v == id ) then
+            return
+        end
+    end
+    table.insert(t,id)
 end
 
 function whom.splitList(t)
@@ -578,10 +581,9 @@ function whom.splitList(t)
 end
 
 function whom.rankToTier(rank)
-    if ( rank == 40 ) then      return 5
-    elseif ( rank >= 32 ) then  return 4
-    elseif ( rank >= 22 ) then  return 3
-    elseif ( rank >= 12 ) then  return 2 
+    if ( rank == 40 ) then      return 4
+    elseif ( rank >= 27 ) then  return 3
+    elseif ( rank >= 16 ) then  return 2
     else return 1 end
 end
 
@@ -615,4 +617,3 @@ function whom.words(str)
   local function helper(word) table.insert(t, word) return "" end
   if not str:gsub("[^%s]+", helper):find"%S" then return t end
 end
-
