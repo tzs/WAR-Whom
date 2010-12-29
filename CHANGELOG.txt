@@ -1,3 +1,6 @@
+v2.8.1
+    Fix a couple errors in the zone lists for the r1 and r4 options.
+========================================================================
 v2.8
     Tiers changed to match the new level ranges in 1.4:
         tier 1       1 - 15
@@ -15,7 +18,6 @@ v2.8
     the Elf lands, and Kadrin Valley, Thunder Mountain, and Black Crag
     from the Dwarf/Greenskin lands. Note the old fortress zones are not
     included.
-
 ========================================================================
 v2.7
     Fix to work with game version 1.4 as is currently on the test

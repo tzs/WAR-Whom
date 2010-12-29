@@ -33,10 +33,10 @@ function whom.initialize()
         whom.careers[i] = GetStringFromTable("CareerLinesMale", whom.careers[i])
     end
     whom.rvrzones = {
-        {1, 6, 100, 106, 200, 206},
+        {6, 11, 100, 106, 200, 206},
         {1, 7, 101, 107, 201, 207},
         {2, 8, 102, 108, 202, 208},
-        {5, 9, 36, 103, 105, 109, 203, 205, 209}
+        {3, 5, 9, 103, 105, 109, 203, 205, 209}
     }
     LibSlash.RegisterWSlashCmd("whom", function(args) whom.onSlashCmd(args) end)
     whom.p("Whom available. Type /whom for population report")
