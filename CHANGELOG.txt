@@ -1,3 +1,7 @@
+v2.8.2
+    No functional change. Just updating info to mark it is compatible
+    with game version 1.4.1.
+========================================================================
 v2.8.1
     Fix a couple errors in the zone lists for the r1 and r4 options.
 ========================================================================
